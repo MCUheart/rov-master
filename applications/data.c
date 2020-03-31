@@ -4,7 +4,7 @@
 
 #define LOG_TAG "data"
 
-#include "../drivers/oled.h"
+
 #include "../drivers/cpu_status.h"
 
 #include "data.h"
@@ -15,16 +15,17 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <sys/shm.h>
 
 
 Rocker_Type Rocker; // 摇杆数据结构体
 
 
-cmd_t cmd_data;
-cmd_t *cmd = &cmd_data;
+static cmd_t cmd_data;
+static cmd_t *cmd = &cmd_data;
 
 system_status_t  system_dev;
-system_status_t  *system = &system_dev;
+system_status_t  *psystem = &system_dev;
 
 /**
   * @brief  获取浮点型数据 头两位小数的100倍
@@ -99,7 +100,6 @@ void remote_control_data_analysis(uint8_t *buff) //控制数据解析
 /**
   * @brief  calculate_check_sum(计算校验和)
   * @param  数据包*buff、数据包长度len
-  * @retval SUM
   */
 void convert_rov_status_data(uint8_t *buff) // 转换需要返回上位机数据
 {
@@ -151,35 +151,6 @@ void convert_rov_status_data(uint8_t *buff) // 转换需要返回上位机数据
 
 
 
-void oled_show_status(void)
-{
-    char str[20];
-	sprintf(str,"IP  %s", system->net.ip);
-	OLED_ShowString(0, 0, (uint8_t *)str, 12);
-
-	sprintf(str,"Mem: %0.1f%% of %d Mb", system->memory.usage_rate, system->memory.total / 1024);
-	OLED_ShowString(0,  16, (uint8_t *)str, 12);
-
-	sprintf(str,"Disk: %0.1f%% of %0.1f G", system->disk.usage_rate, (float)system->disk.total / 1024);
-	OLED_ShowString(0,  32, (uint8_t *)str, 12);
-
-	sprintf(str,"CPU: %0.1f%%", system->cpu.usage_rate);
-	OLED_ShowString(0,  48, (uint8_t *)str, 12);
-
-    if(system->net.netspeed < 1024) 
-    {
-        // 此时单位为 kbps
-        sprintf(str,"%0.1f kb/s", system->net.netspeed);
-        OLED_ShowString(70,  48, (uint8_t *)str, 12);
-    }
-    else 
-    {
-        // 转换单位为 Mbps
-        sprintf(str,"%0.1f Mb/s", system->net.netspeed / 1024);
-        OLED_ShowString(70,  48, (uint8_t *)str, 12);
-    }
-
-}
 
 
 /**
@@ -190,9 +161,9 @@ void *cpu_status_thread(void *arg)
 {
     while(1)
     {
-        system->cpu.temperature = get_cpu_temp();
-        system->cpu.usage_rate  = get_cpu_usage();
-        oled_show_status();
+        psystem->cpu.temperature = get_cpu_temp();
+        psystem->cpu.usage_rate  = get_cpu_usage();
+
     }
 }
 
@@ -202,12 +173,12 @@ void *cpu_status_thread(void *arg)
  */
 void *net_speed_thread(void *arg)
 {
-    system->net.name = "eth0"; // 指定 eht0 网卡
+    psystem->net.name = "eth0"; // 指定 eht0 网卡
     // 获取ip地址
-    get_localip(system->net.name, system->net.ip);
+    get_localip(psystem->net.name, psystem->net.ip);
     while(1)
     {
-        system->net.netspeed = get_net_speed(system->net.name);
+        psystem->net.netspeed = get_net_speed(psystem->net.name);
     }  
 }
 
@@ -219,9 +190,9 @@ void *mem_disk_status_thread(void *arg)
     while(1)
     {
         // 获取内存使用情况
-        get_memory_status(&system->memory);
+        get_memory_status(&psystem->memory);
         // 获取硬盘使用情况
-        get_disk_status(&system->disk);   
+        get_disk_status(&psystem->disk);   
         // 1s更新一次
         sleep(1); 
     }
