@@ -1430,7 +1430,7 @@ void sunxi_digitalWrite(int pin, int value) {
         printf("func:%s pin:%d, value:%d bank:%d index:%d phyaddr:0x%x\n",
                __func__, pin, value, bank, index, GPIOOUT_addr);
 //in NanoPC-T3 ,only after #define bit address can save value,i don't know why....
-// 在NanoPC-T3上，如果要修改寄存器里的数据，一定要#define之后操作才行，
+// 在NanoPC-T3上，如果覝修改寄存器里的数杮，一定覝#define之坎擝作扝行�?
 #define regval_out *(uint32_t *)((uint32_t)gpio + GPIOOUT_addr)
       if (wiringPiDebug)
         printf("befor write reg val: 0x%x,index:%d\n", regval_out, index);
@@ -2341,12 +2341,9 @@ void pwmWrite(int pin, int value) {
         sunxi_pwm_set_act(value);
         sunxi_pwm_set_enable(1);
     } else {
-        printf("not on board :%s,%d\n", __func__, __LINE__);
-        if ((node = wiringPiFindNode(pin)) != NULL) {
-            if (wiringPiDebug)
-                printf("Jim find node%s,%d\n", __func__, __LINE__);
-            node->digitalWrite(node, pin, value);
-        }
+		if ((node = wiringPiFindNode (pin)) != NULL)
+		  	node->pwmWrite (node, pin, value) ;
+
     }
     if (wiringPiDebug)
         printf("this fun is ok now %s,%d\n", __func__, __LINE__);
