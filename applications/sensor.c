@@ -1,5 +1,5 @@
 /*
- * @Description: 开启各个传感器线程 (深度传感器、九轴、CPU 设备数据解析并获取)
+ * @Description: 各个传感器线程 (深度传感器、九轴、CPU 设备数据解析并获取)
  */
 
 #define LOG_TAG "sensor"
@@ -20,108 +20,30 @@
 #include <wiringPi.h>
 #include <wiringSerial.h>
 
-/*----------------------- Variable Declarations -----------------------------*/
-char *Depth_Sensor_Name[3] = {"MS5837", "SPL1301", "null"};
+#define ADS1118_PIN_BASE      350
+#define DEPTH_SENSOR_PIN_BASE 360
 
-// extern struct rt_event init_event; /* ALL_init 事件控制块 */
-
-Sensor_Type Sensor; //传感器参数
 depthSensor_t depthSensor_dev;
 depthSensor_t *depthSensor = &depthSensor_dev;
 
-/*----------------------- Function Implement --------------------------------*/
-/**
-  * @brief  sensor_lowSpeed_callback_fun(低速获取传感器任务函数)
-  */
-void *sensor_lowSpeed_callback_fun(void *arg)
+
+Sensor_Type Sensor; //传感器参数
+
+void *adc_thread(void *arg)
 {
-    if(ads1118Setup(100) < 0) //ADC电压采集初始化
-    {
-        log_e("ads1118 Setup failed");
-    }
-    while (1)
-    {
-        Sensor.CPU.Usage = get_cpu_usage();
-        Sensor.CPU.Temperature = get_cpu_temp(); 
 
-        //Sensor.PowerSource.Voltage = get_voltage_value(); //获取电源电压值
-        //Sensor.PowerSource.Current = get_current_value();
+    // printf("adc: %d", analogRead(201));
 
-    }
     return NULL;
 }
 
-//深度传感器数据转换
-void depthSensor_Data_Convert(void)
-{
-    static uint32_t value[10] = {0};
-    static uint8_t ON_OFF = 0; //自锁开关
-    static uint8_t i = 0;
 
-    if (SPL1301 == Sensor.DepthSensor.Type) //歌尔 SPL1301
-    {
-
-
-        if (ON_OFF == 0)
-        {
-            ON_OFF = 1;
-            //Sensor.DepthSensor.Init_PessureValue = get_spl1301_pressure(); //获取初始化数据
-        }
-        for (i = 0; i < 10; i++)
-        {
-            value[i++] = get_spl1301_pressure(); //获取1次数据
-        }
-        //Sensor.DepthSensor.Temperature = get_spl1301_temperature();
-        //Sensor.DepthSensor.PessureValue = Bubble_Filter(value);
-        /* 深度数值 单位为cm   定标系数为 1.3 单位/cm */
-        //Sensor.DepthSensor.Depth = ((Sensor.DepthSensor.PessureValue - Sensor.DepthSensor.Init_PessureValue) / 20);
-    }
-    else if (MS5837 == Sensor.DepthSensor.Type) //使用MS5837
-    {
-
-    }
-}
-
-
-
-
-/**
- * @brief  深度传感器处理线程
- */
-void *depthSensor_thread(void *arg)
-{
-    /* 依次初始化 ms5837、spl1301，来判断接入的是哪种传感器 */
-    if(ms5837Setup(DEPTH_SENSOR_PIN_BASE) > 0)
-    {
-        depthSensor->name = "ms5837";
-        log_i("ms5837 init");
-        while(1)
-        {
-            delay(10);
-            //get_ms5837_depthSensor();
-        }
-    }
-    else if(spl1301Setup(DEPTH_SENSOR_PIN_BASE) > 0)
-    {
-        depthSensor->name = "spl1301";
-        log_i("spl1301 init");
-        while(1)
-        {
-            delay(10);
-            //get_spl1301_depthSensor();
-        }
-    }
-    else
-    {
-        depthSensor->name = "no plugged a depthSensor";
-        log_e("%s", depthSensor->name);
-    }
-    return NULL;
-}
 
 void *jy901_thread(void *arg)
 {
-    int fd = jy901Setup();
+    // 文件描述符由 arg传递进来
+    int fd = *(int *)arg;
+
     while (1)
     {
         delay(10);
@@ -134,47 +56,102 @@ void *jy901_thread(void *arg)
 }
 
 
+/**
+ * @brief  ms5837 处理函数
+ */
+void ms5837_handle(int pin)
+{
+    //TODO
+    //printf("ms5837 handle\n ");
+
+}
+
+/**
+ * @brief  spl1301深度传感器 处理函数
+ */
+void spl1301_handle(int pin)
+{
+    //TODO
+    //printf("spl1301 handle\n ");
+    //printf("P: %d, T: %d\n",digitalRead(DEPTH_SENSOR_PIN_BASE), digitalRead(DEPTH_SENSOR_PIN_BASE + 1));
+    //get_spl1301_depthSensor();
+
+}
+
+/**
+ * @brief  深度传感器处理线程
+ */
+void *depthSensor_thread(void *arg)
+{
+    while(1)
+    {
+        depthSensor->handle(depthSensor->pin);
+        sleep(1);
+    }
+}
+
+
+
+
+int depthSensor_init(int pin)
+{
+    static int fd;
+    /* 依次初始化 spl1301、ms5837，根据内部数据 来判断接入的是哪种传感器 */
+
+    if((fd = spl1301Setup(pin)) > 0)
+    {
+        depthSensor->pin = pin;
+        depthSensor->name = "spl1301";
+        depthSensor->handle = spl1301_handle;
+        return fd;
+    }
+    else if((fd = ms5837Setup(pin)) > 0)
+    {
+        depthSensor->pin = pin;
+        depthSensor->name = "ms5837";
+        depthSensor->handle = ms5837_handle;
+        return fd;
+    }
+    else
+    {
+        depthSensor->name = "No plugged a depthSensor";
+        depthSensor->handle = NULL; // 防止产生野指针
+        log_e("%s", depthSensor->name);
+        return -1;
+    }
+}
+
 
 int sensor_thread_init(void)
 {
+    static int fd;
+    pthread_t adc_tid;
     pthread_t jy901_tid;
     pthread_t depthSensor_tid;
-    pthread_t sensor_lowSpeed_tid;
 
-    memset(&Sensor, 0, sizeof(Sensor_Type));
-    Sensor.DepthSensor.Type = SPL1301;
 
-    if (pthread_create(&jy901_tid, NULL, jy901_thread, NULL) < 0)
+    // 先判断设备是否存在，不存在不创建对应线程
+    if(ads1118Setup(ADS1118_PIN_BASE) > 0)
     {
-        log_e("JY901_thread create error!");
-        return 1;
+        log_i("ads1118 init");
+        pthread_create(&adc_tid, NULL, adc_thread, NULL);
+        pthread_detach(adc_tid);
     }
-    if (pthread_detach(jy901_tid))
+        
+    if((fd = jy901Setup()) > 0)
     {
-        log_w("JY901_thread detach failed...");
-        return -2;
-    }
-
-    if (pthread_create(&sensor_lowSpeed_tid, NULL, sensor_lowSpeed_callback_fun, NULL) < 0)
-    {
-        log_e("sensor_lowSpeed_thread create error!");
-        return 1;
-    }
-    if (pthread_detach(sensor_lowSpeed_tid)){
-        log_w("sensor_lowSpeed_thread detach failed...");
-        return -2;
+        log_i("jy901 init");
+        pthread_create(&jy901_tid, NULL, jy901_thread, &fd);
+        pthread_detach(jy901_tid);
     }
 
-    if (pthread_create(&depthSensor_tid, NULL, depthSensor_thread, NULL) < 0)
+    if(depthSensor_init(DEPTH_SENSOR_PIN_BASE) > 0)
     {
-        log_e("DepthSensor_thread create error!");
-        return 1;
+        log_i("%s init", depthSensor->name);
+        pthread_create(&depthSensor_tid, NULL, depthSensor_thread, NULL);
+        pthread_detach(depthSensor_tid);
     }
-    if (pthread_detach(depthSensor_tid))
-    {
-        log_w("DepthSensor_thread detach failed...");
-        return -2;
-    }
+
 
     return 0;
 }
@@ -201,7 +178,7 @@ void print_sensor_info(void)
     log_d("       Voltage      |  %0.3f",  Sensor.PowerSource.Voltage); // 电压
     log_d("       Current      |  %0.3f",  Sensor.PowerSource.Current); // 电流
     log_d("--------------------|------------");
-    log_d(" Depth Sensor Type  |  %s",     Depth_Sensor_Name[Sensor.DepthSensor.Type]); // 深度传感器类型
+    log_d(" Depth Sensor Type  |  %s",     "nop"); // 深度传感器类型
     log_d(" Water Temperature  |  %0.3f",  Sensor.DepthSensor.Temperature);          // 水温
     log_d("sensor_Init_Pressure|  %0.3f",  Sensor.DepthSensor.Init_PessureValue);    // 深度传感器初始压力值
     log_d("   sensor_Pressure  |  %0.3f",  Sensor.DepthSensor.PessureValue);         // 深度传感器当前压力值
