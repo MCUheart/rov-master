@@ -24,18 +24,18 @@ static float vref[6] = {6.144, 4.096, 2.048, 1.024, 0.512, 0.256};
 /**
   * @brief  ads1118 spi数据写入与读取
   */
-static int16_t ads1118_transmit(int fd, uint8_t *data)
+static int16_t ads1118_transmit(int fd, uint16_t data)
 {
     unsigned char buff[4] = {0};
-
-    buff[0] = data[1]; // SPI传输高位在前 (datasheet P24)
-    buff[1] = data[0];
+    
+    buff[0] = (data >> 8) & 0xff; // SPI传输高位在前 (datasheet P24)
+    buff[1] = (data & 0xff);
     buff[2] = 0;
     buff[3] = 0;
 
     wiringPiSPIDataRW(fd, buff, 4);
 
-    return buff[0] << 8 | buff[1]; // SPI传输高位在前
+    return (buff[0] << 8) | buff[1]; // SPI传输高位在前
 }
 
 
@@ -44,20 +44,21 @@ static int16_t ads1118_transmit(int fd, uint8_t *data)
   */
 static int16_t ads1118_convert(int fd, int channel)
 {
+    ads1118->config &= ~CONFIG_MUX_MASK; // 通道寄存器位 清0
     switch (channel) {
         case 0:
-            ads1118->regs.mux = MUX_S0; break;
+            ads1118->config |= (MUX_S0 << 12); break;
         case 1:
-            ads1118->regs.mux = MUX_S1; break;
+            ads1118->config |= (MUX_S1 << 12); break;
         case 2:
-            ads1118->regs.mux = MUX_S2; break;
+            ads1118->config |= (MUX_S2 << 12); break;
         case 3:
-            ads1118->regs.mux = MUX_S3; break;
+            ads1118->config |= (MUX_S3 << 12); break;
         default:
             log_e("ads1118 channel range in [0, 3]");
     }
 
-    return ads1118_transmit(fd, (uint8_t *)ads1118);
+    return ads1118_transmit(fd, ads1118->config);
 }
 
 
@@ -73,16 +74,16 @@ static int16_t ads1118_convert(int fd, int channel)
   */
 static int myAnalogRead(struct wiringPiNodeStruct *node, int pin)
 {
+    int vol     = 0;
+    int fd      = node->fd;
     // 获取是 ads1118 的第几通道
     int channel = pin - node->pinBase;
-    int fd      = node->fd;
-    int vol     = 0;
 
-    int adcVal = ads1118_convert(fd, channel);
+    ads1118->adcVal = ads1118_convert(fd, channel);
 
     // 注意FS为 正负2.048，所以计算时为2.048/32768. (满量程是65535)
-    // verf[ads1118->regs.pga] 即为 FSR增益值 ±2.048
-    vol = adcVal * (vref[ads1118->regs.pga] / 32768);
+    // verf[PGA_2_048] 即为 FSR增益值 ±2.048
+    vol = ads1118->adcVal * (vref[PGA_2_048] / 32768);
 
     return vol;
 }
@@ -105,18 +106,19 @@ int ads1118Setup(const int pinBase)
     {
         log_e("ads1118 spi init failed");
     }
-    /* 设置配置寄存器 */
-    ads1118->regs.ss = SS_NONE;               // 不启动单发转换
-    ads1118->regs.mux = MUX_S0;               // 通道 AIN0
-    ads1118->regs.pga = PGA_2_048;            // 可编程增益放大 ±2.048v
-    ads1118->regs.mode = MODE_CONTINOUS;      // 连续转换模式
-    ads1118->regs.dr = DR_128_SPS;            // 每秒采样率 128
-    ads1118->regs.ts_mode = TS_MODE_ADC;      // ADC 模式
-    ads1118->regs.pull_up_en = PULL_UP_EN_ON; // 数据引脚上拉使能
-    ads1118->regs.nop = NOP_DATA_VALID;       // 有效数据,更新配置寄存器
-    ads1118->regs.reserved = RESERVED_BIT;    // 保留位
+    ads1118->config = 0;
+    /* 设置配置寄存器 448Bh */
+    ads1118->config |= (SS_NONE        << 15); // 不启动单发转换
+    ads1118->config |= (MUX_S0         << 12); // 通道 AIN0
+    ads1118->config |= (PGA_2_048      << 9);  // 可编程增益放大 ±2.048v
+    ads1118->config |= (MODE_CONTINOUS << 8);  // 连续转换模式
+    ads1118->config |= (DR_128_SPS     << 5);  // 每秒采样率 128
+    ads1118->config |= (TS_MODE_ADC    << 4);  // ADC 模式
+    ads1118->config |= (PULL_UP_EN_ON  << 3);  // 数据引脚上拉使能
+    ads1118->config |= (NOP_DATA_VALID << 1);  // 有效数据,更新配置寄存器
+    ads1118->config |= (RESERVED_BIT);         // 保留位
 
-    ads1118_transmit(fd, (uint8_t *)ads1118);     // 写入配置寄存器
+    ads1118_transmit(fd, ads1118->config);     // 写入配置寄存器
 
 	// 创建节点 4 pins 共4个通道
     node = wiringPiNewNode(pinBase, 4);
