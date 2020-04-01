@@ -19,9 +19,28 @@ static spl1301_t spl1301_dev;
 static spl1301_t *spl1301 = &spl1301_dev;
 
 /**
+ * @brief  获取 SPL1301 厂家ID与版本ID
+ * @retval 厂家ID
+ */
+int spl1301_get_id(int fd)
+{
+    int8_t reg;
+    reg = wiringPiI2CReadReg8(fd, PRODUCT_REVISION_ID);
+
+    // 若无法读取数据，判定为 接入的不是SPL1301，或未接入
+    if(reg < 0)
+        return -1;
+
+    spl1301->revision_id = reg & 0x0F;
+    spl1301->product_id  = (reg & 0xF0) >> 4;
+
+    return spl1301->product_id;
+}
+
+/**
  * @brief 设置 SPL1301 压力或温度 的采样率和过采率 
  * @param 
- *  uint8_t iSensor     0: Pressure; 1: Temperature 
+ *  uint8_t iSensor     0: Pressure;      1: Temperature 
  *  uint8_t u8SmplRate  sample rate(Hz)   Maximal = 128
  *  uint8_t u8OverSmpl  oversample rate   Maximal = 128
  */
@@ -132,6 +151,7 @@ void spl1301_get_calib_param(int fd)
     uint32_t h;
     uint32_t m;
     uint32_t l;
+
     h = wiringPiI2CReadReg8(fd, 0x10);
     l = wiringPiI2CReadReg8(fd, 0x11);
     spl1301->calib_param.c0 = (int16_t)h << 4 | l >> 4;
@@ -325,8 +345,9 @@ int spl1301Setup(const int pinBase)
         log_e("spl1301 i2c init failed");
         return -1;
     }
-
-    spl1301->product_id = 0x10;
+    // 当无法获取ID时，判定 接入不是SPL1301，或未接入SPL1301
+    if(spl1301_get_id(fd) < 0)
+        return -1;
 
     // 获取出厂标定参数
     spl1301_get_calib_param(fd);
@@ -334,16 +355,10 @@ int spl1301Setup(const int pinBase)
     spl1301_rateset(fd, PRESSURE_SENSOR, 32, 8);
     // 采样率 = 1Hz; Temperature 超采样率 = 8;
     spl1301_rateset(fd, TEMPERATURE_SENSOR, 32, 8);
-
     /* 后台模式(自动开启转换 气压 及 温度)，即自动连续测量模式 */
     spl1301_start_continuous(fd, CONTINUOUS_P_AND_T); 
 
-    if (-1 == spl1301_dev.calib_param.c0)
-    {
-        return -1; //当为-1时，初始化失败(接入不是SPL1301)
-    }
-
-    // 创建节点，2个通道，一个为压力值，一个为温度值
+    // 创建节点加入链表，2个通道，一个为压力值，一个为温度值
     node = wiringPiNewNode(pinBase, 2);
 	if (!node)
     {
@@ -352,8 +367,8 @@ int spl1301Setup(const int pinBase)
     }
 
     // 注册方法
-    node->fd         = fd;
-    node->analogRead = myDigitalRead;
+    node->fd          = fd;
+    node->digitalRead = myDigitalRead;
 
     return fd;
 }

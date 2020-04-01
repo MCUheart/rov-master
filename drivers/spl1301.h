@@ -14,8 +14,8 @@
 #define SPL1301_I2C_DEV  "/dev/i2c-1"  // SPL1301 使用的 I2C设备
 #define SPL1301_I2C_ADDR 0x77          // SPL1301 I2C 地址 (datasheet P9)
 
-/* 寄存器地址 */
-#define REG_ID 0x0D
+/* 产品与版本ID 寄存器地址 */
+#define PRODUCT_REVISION_ID 0x0D
 
 /* 命令 */
 #define CONTINUOUS_PRESSURE 1
@@ -42,8 +42,8 @@ typedef struct
 typedef struct
 {
     spl1301_calib_param_t calib_param; /* calibration data */
-    uint8_t product_id;  // 产品ID     
-    uint8_t revision_id; // 修订ID   
+    int8_t product_id;  // 产品ID     
+    int8_t revision_id; // 修订ID   
 
     int32_t i32rawPressure;    // 原始压力值
     int32_t i32rawTemperature; // 原始温度值
@@ -56,6 +56,8 @@ typedef struct
 
 //初始化调用
 int spl1301Setup(const int pinBase);
+// 获取厂家ID与版本ID
+int spl1301_get_id(int fd);
 //设置特定传感器的采样率和每秒过采样率
 void spl1301_rateset(int fd, uint8_t iSensor, uint8_t u8SmplRate, uint8_t u8OverSmpl);
 //开始一次温度测量

@@ -2,8 +2,8 @@
  * @Description: MS5837 深度传感器驱动
  *
  *       Notes: 水深传感器设备驱动
- *   Attention: SCL - E10 (黑色)   
- *				SDA - E12 (黄色)   
+ *   Attention: SCL (黑色)   
+ *				SDA (黄色)   
  */
 #define LOG_TAG "ms5837"
 
@@ -210,16 +210,20 @@ static int myDigitalRead(struct wiringPiNodeStruct *node, int pin)
 	 * 在计算压力函数中，会计算温度二阶，使得温度更加准确
 	 * 因此不管获取压力或者温度，都应调用这以下两个函数
 	*/
+
+	// 因为程序调用时，会先获取压力值，获取完压力值后(经过二阶修正)，温度值才是准确的
+	// 因此，获取温度时，不再进行数据计算，直接返回温度数据，避免浪费计算资源
+	if(TEMPERATURE_SENSOR == channel)
+    {
+        return ms5837->temperature;
+    }
+
     ms5837_cal_raw_temperature(fd);
 	ms5837_cal_pressure(fd);
 
     if(PRESSURE_SENSOR == channel)
     {
         return ms5837->pressure;
-    }
-    else if(TEMPERATURE_SENSOR == channel)
-    {
-        return ms5837->temperature;
     }
 
     log_e("ms5837 channel range in [0, 1]");
@@ -243,15 +247,13 @@ int ms5837Setup(const int pinBase)
         return -1;
     }
 
-	/* 先复位再读取prom数据 (datasheet P10) */
+	/* 先复位再读取校准数据 (datasheet P10) */
 	ms5837_reset(fd);	     
 	
-	// 获取标定参数
+	// 获取校准参数，若获取的数据CRC校验失败，则判定 接入的不是MS5837，或未接入MS5837
 	if(ms5837_get_calib_param(fd) < 0) 
-	{
 		return -1;
-	}
-	
+
     // 创建节点，2个通道，一个为压力值，一个为温度值
     node = wiringPiNewNode(pinBase, 2);
 	if (!node)
