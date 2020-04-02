@@ -1,5 +1,5 @@
 /*
- * @Description: 系统状态获取方法(CPU、内存、硬盘、网卡网速)
+ * @Description: system status 系统状态获取方法(CPU、内存、硬盘、网卡网速)
  */
 
 #define LOG_TAG "cpu_status"
@@ -32,7 +32,8 @@ float get_cpu_temp(void)
 
     // thermal_zone0 表示 CPU0
     fp = fopen(TEMP_PATH, "r");
-
+    if(NULL == fp) // 防止野指针访问，从而产生段错误
+        return 0;
     fscanf(fp,"%f", &temp); // 读取第1行 cpu温度数据
 
     temp /= 1000.0f;
@@ -52,7 +53,8 @@ void get_memory_status(memory_t *memory)
     char name2[20]; // 用于保存 单位    (eg. kB)
 
     fp = fopen("/proc/meminfo", "r");
-
+    if(NULL == fp) // 防止野指针访问，从而产生段错误
+        return;
     fscanf(fp,"%s %u %s", name1, &memory->total, name2); // 读取第1行 total
     fscanf(fp,"%s %u %s", name1, &memory->free, name2);  // 读取第2行 free
     fscanf(fp,"%s %u %s", name1, &memory->available, name2); // 读取第3行 available
@@ -76,6 +78,8 @@ void get_disk_status(disk_t *disk)
 	char  a[20], d[20], e[20], f[20], buf[100];
 
 	fp = popen("df", "r");
+    if(NULL == fp) // 防止野指针访问，从而产生段错误
+        return;
 	fgets(buf, sizeof(buf), fp); // 读取第1行描述信息(相当于跳过第1行)
 
     /*  eg.
@@ -116,6 +120,8 @@ void get_cpuInfo(cpuInfo_t *cpuInfo)
 	FILE *fp;
 
     fp = fopen("/proc/stat", "r");
+    if(NULL == fp) // 防止野指针访问，从而产生段错误
+        return;
     
 	fscanf(fp, "%s %u %u %u %u %u %u %u",
 	       cpuInfo->name, 
@@ -177,13 +183,17 @@ void get_net_data(netData_t *net_data, char *eth)
 	    tb, tp, te, td, tfi, tfr, tc, tm;
 
 	fp = fopen("/proc/net/dev", "r");
+    if(NULL == fp) // 防止野指针访问，从而产生段错误
+        return;
+
 	while (fscanf(fp,
 		"%s %llu %llu %llu %llu %llu %llu %llu %llu %llu %llu %llu %llu %llu %llu %llu %llu",
 		name, &rb, &rp, &re, &rd, &rfi, &rfr, &rc, &rm, &tb, &tp,
 		&te, &td, &tfi, &tfr, &tc, &tm) > 0) 
     {
-        if (strcmp(name, eth) == 0) {
-
+        // 比较网卡名
+        if (strcmp(name, eth) == 0)
+        {
             net_data->rb = rb;
             net_data->rp = rp;
             net_data->tb = tb;
@@ -191,6 +201,11 @@ void get_net_data(netData_t *net_data, char *eth)
             break;
         }
 	}
+    /* 必须关闭文件
+     * 打开大量文件并且不关闭, 很快会达到进程最大允许打开的文件数限制，这样就不能再打开文件。
+     * 在Linux上，可以通过ulimit -n 来查看和更改当前session的限制数 
+     */
+    fclose(fp);
 }
 
  /**
@@ -203,7 +218,6 @@ float get_net_speed(char *eth)
     float netspeed;
 	char ethc[20];
     netData_t nd1, nd2;
-
 
     sprintf(ethc, "%s:", eth); // 加上:
 
