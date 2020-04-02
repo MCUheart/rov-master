@@ -1,10 +1,23 @@
-# [ROV-Master]()
+# [ROV-Master](https://github.com/zengwangfa/rov-master)
+
+<div align="center">
+  <a href="https://github.com/zengwangfa/rov-master"><img src="https://zengwangfa.oss-cn-shanghai.aliyuncs.com/rov/rovmaster1.jpg" alt=""></a>
+</div>
+
+<div align="center">
+  <a href="https://github.com/zengwangfa/rov-master">:robot: ROV Master</a>
+</div>
+
+<div align="center">
+  <a href="http://wiki.friendlyarm.com/wiki/index.php/NanoPi_NEO_Core/zh"><img src="https://img.shields.io/badge/Device-Nanopi NEO Core-brigreen.svg?style=flat-square" alt="STM32"></a>
+  <a href="https://img.shields.io"><img src="https://img.shields.io/github/repo-size/zengwangfa/rov-master?style=flat-square" alt="Size"></a>
+</div>
 
 ## 1. 介绍
 
 - 本项目用到了以下软件包：
   - [WiringNP](https://github.com/friendlyarm/WiringNP) This is a GPIO access library for NanoPi. It is based on the WiringOP for Orange PI which is based on original WiringPi for Raspberry Pi.
-  - [EasyLogger](https://github.com/armink/EasyLogger) 是一款超轻量级(ROM<1.6K, RAM<0.3K)、高性能的 C/C++ 日志库，非常适合对资源敏感的软件项目。
+  - [EasyLogger](https://github.com/armink/EasyLogger) 是一款超轻量级(ROM<1.6K, RAM<0.3K)、高性能的 C/C++ 日志库。
 
 ## 2. 使用
 ```shell
@@ -30,6 +43,7 @@ $ sudo ./rovmaster
 ```
 
 ### 2.3 注意事项
+#### 2.3.1 设备未打开
 若执行时提示无法打开某设备，输入 `sudo npi-config` > `Advanced Options` 中使能相关设备：
 
 ```shell
@@ -40,6 +54,18 @@ $ sudo npi-config
 有时修改会后编译执行会出问题，未出现修改部分效果，此时 `make clean` 后再编译运行即可。
 
 视频推流命令在 `video.sh` 脚本中，指定相关视频参数，在其中修改 **摄像头视频推流参数**即可。
+
+#### 2.3.2 easylogger编译
+对easylogger编辑后，需要进行重新编译时：
+切换至 `lib/easylogger/` 目录，输入 `make` 进行编译后，需要重新拷贝生成的链接库 `libeasylogger.so`
+
+```shell
+$ cd lib/easylogger/
+$ make
+$ sudo cp libeasylogger.so ..
+$ sudo cp libeasylogger.so /usr/lib/
+```
+
 
 ## 3. 进度
 - 驱动模块
