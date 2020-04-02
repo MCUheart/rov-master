@@ -214,7 +214,7 @@ void elog_start(void) {
 #endif
 
     /* show version */
-    log_i("EasyLogger V%s is initialize success.", ELOG_SW_VERSION);
+    // log_i("EasyLogger V%s is initialize success.", ELOG_SW_VERSION);
 }
 
 /**
@@ -869,4 +869,28 @@ void elog_hexdump(const char *name, uint8_t width, uint8_t *buf, uint16_t size)
     }
     /* unlock output */
     elog_output_unlock();
+}
+
+
+/**
+ * 自行定义的错误打印日志，根据传入的 fd 来判断是何种错误
+ * fd = -1 : 接口错误   (eg. i2c/spi接口无法找到)
+ * fd = -2 : 器件不存在 (eg. oled/ms5837/spl1301/pca9685器件未接入)
+ * fd = -3 : 器件初始化错误 (eg. ms5837读取校准数据错误) 
+ * @param fd   描述符
+ * @param name 设备名
+ */
+void ERROR_LOG(int fd, device_t *dev)
+{
+    switch(fd)
+    {
+        case -1:
+            log_e("%s interface disable", dev->interface); break;
+        case -2:
+            log_e("%s no plugged", dev->name); break;
+        case -3:
+            log_e("%s init failed", dev->name); break;
+        default:
+            log_e("%s init failed", dev->name); break;
+    }
 }
