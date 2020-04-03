@@ -55,9 +55,9 @@ uint8_t _crc4(uint16_t *n_prom)
 /**
   * @brief  ms5837 复位
   */
-void ms5837_reset(int fd)
+int ms5837_reset(int fd)
 {
-	wiringPiI2CWrite(fd, MS583703BA_RESET);
+	return wiringPiI2CWrite(fd, MS583703BA_RESET);
 }
 
 /**
@@ -80,15 +80,14 @@ int ms5837_get_calib_param(int fd)
 	ms5837->crc = (uint8_t)(ms5837->c[0] >> 12);
 	// 工厂定义参数为 c[0] 的bit[14,0]
 	ms5837->factory_id = (uint8_t)(ms5837->c[0] & 0x0fff);
-
+	
 	/* 
-	 * crc校验为用于判断ms5837是否初始化成功 
-	 * 或者说是否是 ms5837传感器
+	 * crc校验为用于判断 ms5837 是否初始化成功 
+	 * 或者说为了检测接入的设备是否是 ms5837传感器
 	*/
 	if(ms5837->crc == _crc4(ms5837->c))
-	{
 		return 1;
-	}
+
 	return -1;
 }
 
@@ -144,7 +143,7 @@ void ms5837_cal_raw_temperature(int fd)
 void ms5837_cal_pressure(int fd)
 {
 	int64_t  Ti, OFFi, SENSi;
-	uint32_t dT_squ;
+	int32_t dT_squ;
 	uint32_t temp_minus_squ, temp_plus_squ;
 
 	// 获取原始压力数字量
@@ -160,6 +159,7 @@ void ms5837_cal_pressure(int fd)
 	/* 对温度和压力进行二阶修正 (datasheet P8) */
 	if(ms5837->TEMP < 2000) // 低温情况:低于20℃时
 	{
+		/* TODO  测试后：0x200000000 改为右移多少bit，提高效率 */
 		Ti    = 3 * dT_squ / 0x200000000;
 		OFFi  = 3 * temp_minus_squ / 2;
 		SENSi = 5 * temp_minus_squ / 8;
@@ -241,18 +241,20 @@ int ms5837Setup(const int pinBase)
     static int fd;
 	struct wiringPiNodeStruct *node;
 
+	// 小于0代表无法找到该i2c接口，输入命令 sudo npi-config 使能该i2c接口
     if ((fd = wiringPiI2CSetupInterface(MS5837_I2C_DEV, MS583703BA_I2C_ADDR)) < 0)
     {
         log_e("ms5837 i2c init failed");
         return -1;
     }
-
-	/* 先复位再读取校准数据 (datasheet P10) */
-	ms5837_reset(fd);	     
+	// 写入复位，如果写入失败，代表不存在 MS5837，或者器件地址错误
+	// 复位的目的：复位才可读取校准数据 (datasheet P10) 
+	if(ms5837_reset(fd) < 0)
+		return -2;	     
 	
-	// 获取校准参数，若获取的数据CRC校验失败，则判定 接入的不是MS5837，或未接入MS5837
+	/* 获取校准参数，若获取的数据CRC校验失败，则判定 接入的不是MS5837，或未接入MS5837 */
 	if(ms5837_get_calib_param(fd) < 0) 
-		return -1;
+		return -3;
 
     // 创建节点，2个通道，一个为压力值，一个为温度值
     node = wiringPiNewNode(pinBase, 2);
@@ -263,8 +265,8 @@ int ms5837Setup(const int pinBase)
     }
 
     // 注册方法
-    node->fd         = fd;
-    node->analogRead = myDigitalRead;
+    node->fd          = fd;
+    node->digitalRead = myDigitalRead;
 
 	return fd;
 }

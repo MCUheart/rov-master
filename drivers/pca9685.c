@@ -14,9 +14,6 @@
 #include <wiringPi.h>
 #include <wiringPiI2C.h>
 
-static pca9685_t pca9685_dev;
-static pca9685_t *pca9685 = &pca9685_dev;
-
 
 /**
  * @brief 获取对应 LEDX_ON_L 输出通道的寄存器地址 (datasheet P20)
@@ -33,6 +30,20 @@ int baseReg(int pin)
   */
 void pca9685PWMSetFreq(int fd, float freq)
 {
+	/**  MODE1 寄存器
+	* Restart and set Mode1 register to our prefered mode:
+	* Restart         : bit 7 = 1 - Will revert to 0 after restart
+	* Internal Clock  : bit 6 = 0
+	* Auto Increment  : bit 5 = 1
+	* Normal Mode     : bit 4 = 0
+	* SUB1 Disabled   : bit 3 = 0
+	* SUB2 Disabled   : bit 2 = 0
+	* SUB3 Disabled   : bit 1 = 0
+	* ALLCALL Enabled : bit 0 = 1
+	*
+	* B10100001 == 0xA1
+	*/
+
 	// 限制频率范围在 [40, 1000]
 	freq = (freq > 1000 ? 1000 : (freq < 40 ? 40 : freq));
 
@@ -43,23 +54,21 @@ void pca9685PWMSetFreq(int fd, float freq)
 	*/
 	int prescale = (int)(PCA9685_OSC_CLK / (4096 * freq) - 0.5f);
 
-	// 获取 MODE 寄存器状态
-	int pca9685_dev = wiringPiI2CReadReg8(fd, PCA9685_MODE1);	
-	pca9685->restart = DISABLE_RESTART; // 关闭重启位
+	// Get settings and calc bytes for the different states.
+	int settings = wiringPiI2CReadReg8(fd, PCA9685_MODE1) & 0x7F;	// Set restart bit to 0
+	int sleep	= settings | 0x10;									// Set sleep bit to 1
+	int wake 	= settings & 0xEF;									// Set sleep bit to 0
+	int restart = wake | 0x80;										// Set restart bit to 1
 
-	// 按照手册 Page 24 中的说明,先设置睡眠,才能设置周期
-	pca9685->sleep = SLEEP_MODE;  // 设置休眠模式
-	wiringPiI2CWriteReg8(fd, PCA9685_MODE1, pca9685_dev); 
-
+	// Go to sleep, set prescale and wake up again.
+	wiringPiI2CWriteReg8(fd, PCA9685_MODE1, sleep);
 	wiringPiI2CWriteReg8(fd, PCA9685_PRESCALE, prescale);
+	wiringPiI2CWriteReg8(fd, PCA9685_MODE1, wake);
 
-	pca9685->sleep = NORNAL_MODE; // 切换为正常模式
-	wiringPiI2CWriteReg8(fd, PCA9685_MODE1, pca9685_dev);
+	// Now wait a millisecond until oscillator finished stabilizing and restart PWM.
+	delay(1);
+	wiringPiI2CWriteReg8(fd, PCA9685_MODE1, restart);
 
-	// 等待晶振稳定后重启
-	delay(10);
-	pca9685->restart = ENABLE_RESTART; // 使能重启
-	wiringPiI2CWriteReg8(fd, PCA9685_MODE1, pca9685_dev);
 }
 
 /**
@@ -167,26 +176,31 @@ static void myOnOffWrite(struct wiringPiNodeStruct *node, int pin, int value)
  */
 int pca9685Setup(const int pinBase, float freq)
 {
-	static int fd;
+	int fd;
+	int settings, autoInc;
 	struct wiringPiNodeStruct *node;
 
   	// PCA9685_OE_PIN，即 GPIOG11 低电平使能
   	pinMode(PCA9685_OE_PIN, OUTPUT);
   	digitalWrite(PCA9685_OE_PIN, LOW);
 
+	// 小于0代表无法找到该i2c接口，输入命令 sudo npi-config 使能该i2c接口
   	fd = wiringPiI2CSetupInterface(PCA9685_I2C_DEV, PCA9685_I2C_ADDR);
   	if (fd < 0)
-  	{
-    	log_e("pca9685 i2c init failed");
-    	return fd;
-  	}
+    	return -1;
+
+	// 小于0代表读取失败，代表不存在该 PCA9685 器件，或者器件地址错误
+	if((settings = wiringPiI2CReadReg8(fd, PCA9685_MODE1)) < 0) 
+		return -2;
+
+	autoInc  = (settings | 0x20) & 0x7F;
+	wiringPiI2CWriteReg8(fd, PCA9685_MODE1, autoInc);
 
 	if (freq < 40 || freq > 1000)
-  	{
      	log_e("pca9685 freq range in [40, 1000]");
-  	}
+
 	// 设置 PWM 频率，启动输出
-	pca9685PWMFreq(fd, freq);
+	pca9685PWMSetFreq(fd, freq);
 	
 	// 创建节点 16 pins [0..15] + [16] for all
 	node = wiringPiNewNode(pinBase, PIN_ALL + 1);
@@ -195,7 +209,6 @@ int pca9685Setup(const int pinBase, float freq)
      	log_e("pca9685 node create failed");
 		return -1;
 	}
-
 
   	// 注册方法
 	node->fd			= fd;

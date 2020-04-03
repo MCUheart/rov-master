@@ -31,15 +31,15 @@ uint8_t OLED_GRAM[128][8];
 //dat:要写入的数据/命令
 //cmd:数据/命令标志 0,表示命令;1,表示数据;
 
-void OLED_WR_Byte(uint8_t dat, uint8_t cmd)
+int OLED_WR_Byte(uint8_t dat, uint8_t cmd)
 {
 	if (cmd)
 	{
-		wiringPiI2CWriteReg8(fd, 0x40, dat);
+		return wiringPiI2CWriteReg8(fd, 0x40, dat);
 	}
 	else
 	{
-		wiringPiI2CWriteReg8(fd, 0x0, dat);
+		return wiringPiI2CWriteReg8(fd, 0x0, dat);
 	}
 }
 
@@ -256,17 +256,17 @@ void OLED_ShowString(uint8_t x, uint8_t y, const uint8_t *p, uint8_t size)
 //初始化SSD1306
 int oledSetup(void)
 {
-	fd = wiringPiI2CSetupInterface(I2C_OLED_Device, I2C_OLED_Addr);
-
+	// 小于0代表无法找到该i2c接口，输入命令 sudo npi-config 使能该i2c接口
+	fd = wiringPiI2CSetupInterface(I2C_OLED_DEV, I2C_OLED_ADDR);
 	if (fd < 0)
-	{
-		log_e("OLED i2c init failed");
 		return -1;
-	}
 
-	OLED_WR_Byte(0xAE, OLED_CMD); //关闭显示
+	// 小于0代表写入失败，代表不存在 OLED 器件，或者器件地址错误
+	if(OLED_WR_Byte(0xAE, OLED_CMD) < 0) //关闭显示
+		return -2;
+
 	OLED_WR_Byte(0xD5, OLED_CMD); //设置时钟分频因子,震荡频率
-	OLED_WR_Byte(80, OLED_CMD);   //[3:0],分频因子;[7:4],震荡频率
+	OLED_WR_Byte(80,   OLED_CMD); //[3:0],分频因子;[7:4],震荡频率
 	OLED_WR_Byte(0xA8, OLED_CMD); //设置驱动路数
 	OLED_WR_Byte(0X3F, OLED_CMD); //默认0X3F(1/64)
 	OLED_WR_Byte(0xD3, OLED_CMD); //设置显示偏移

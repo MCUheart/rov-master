@@ -5,14 +5,14 @@
 #include "../user/DataType.h"
 #include "../applications/olcdfont.h"
 
-#define I2C_OLED_Device "/dev/i2c-2" // OLED 使用的 I2C
-#define I2C_OLED_Addr   0x3C         // 默认 OLED 地址
+#define I2C_OLED_DEV  "/dev/i2c-2" // OLED 使用的 I2C接口
+#define I2C_OLED_ADDR 0x3C         // 默认 OLED 地址 0x3C
 
 #define OLED_CMD 0  //写命令
 #define OLED_DATA 1 //写数据
 
 // OLED控制用函数
-void OLED_WR_Byte(uint8_t dat, uint8_t cmd);
+int OLED_WR_Byte(uint8_t dat, uint8_t cmd);
 void OLED_Display_On(void);
 void OLED_Display_Off(void);
 void OLED_Refresh_Gram(void);

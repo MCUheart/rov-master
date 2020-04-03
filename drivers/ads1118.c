@@ -33,8 +33,10 @@ static int16_t ads1118_transmit(int fd, uint16_t data)
     buff[2] = 0;
     buff[3] = 0;
 
+    printf("%x %x %x %x\n",buff[0],buff[1],buff[2],buff[3]);
     wiringPiSPIDataRW(fd, buff, 4);
 
+    printf("%x %x %x %x\n",buff[0],buff[1],buff[2],buff[3]);
     return (buff[0] << 8) | buff[1]; // SPI传输高位在前
 }
 
@@ -100,12 +102,11 @@ int ads1118Setup(const int pinBase)
 {
     static int fd;
 	struct wiringPiNodeStruct *node;
-
+	// 小于0代表无法找到该spi接口，输入命令 sudo npi-config 使能该spi接口
     fd = wiringPiSPISetup(1, ADS1118_OSC_CLK); // ads1118使用的 /dev/spidev1.0   1MHz
     if (fd < 0)
-    {
-        log_e("ads1118 spi init failed");
-    }
+        return -1;
+
     ads1118->config = 0;
     /* 设置配置寄存器 448Bh */
     ads1118->config |= (SS_NONE        << 15); // 不启动单发转换
@@ -118,9 +119,11 @@ int ads1118Setup(const int pinBase)
     ads1118->config |= (NOP_DATA_VALID << 1);  // 有效数据,更新配置寄存器
     ads1118->config |= (RESERVED_BIT);         // 保留位
 
-    ads1118_transmit(fd, ads1118->config);     // 写入配置寄存器
+    // 读写数据返回0，代表未接入 ads1118设备
+    if(ads1118_transmit(fd, ads1118->config) == 0)     // 写入配置寄存器
+        return -2;
 
-	// 创建节点 4 pins 共4个通道
+	// 创建节点加入链表 4 pins 共4个通道
     node = wiringPiNewNode(pinBase, 4);
     if (!node)
     {

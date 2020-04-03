@@ -125,14 +125,12 @@ void jy901_convert(JY901_Type *pArr)
   */
 int jy901Setup(void)
 {
-	static int fd = 0;
-
-	if ((fd = serialOpen(JY901_UART_DEV, JY901_UART_BAUD)) < 0)
-	{
-		log_e("Unable to open serial device: %s", strerror(errno));
-		log_e("JY901 init failed");
+	static int fd;
+	// 小于0代表无法找到该uart接口，输入命令 sudo npi-config 使能该uart接口
+	fd = serialOpen(JY901_UART_DEV, JY901_UART_BAUD);
+	if (fd < 0)
 		return -1;
-	}
+
 
 	return fd;
 }

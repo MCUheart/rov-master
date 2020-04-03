@@ -12,7 +12,7 @@
 #include "../user/DataType.h"
 
 #define PCA9685_I2C_DEV  "/dev/i2c-0" // PCA9685 使用的 I2C设备
-#define PCA9685_I2C_ADDR 0x40         // 默认 PCA9685 I2C 地址
+#define PCA9685_I2C_ADDR 0x40         // 将A0-A5全部接地，则其器件地址为:0x40
 #define PCA9685_OE_PIN   7            // 芯片使能引脚 -> GPIO11引脚序号为 7
 
 #define PCA9685_OSC_CLK 25000000.0f   // PCA9685晶振时钟频率Hz
@@ -45,22 +45,9 @@
 #define ENABLE_RESTART  0b1
 
 
-typedef struct {
-    uint8_t allcall :1; 
-    uint8_t sub3    :1; 
-    uint8_t sub2    :1;
-    uint8_t sub1    :1;
-    uint8_t sleep   :1;
-    uint8_t ai      :1; 
-    uint8_t extclk  :1;
-    uint8_t restart :1;
-} pca9685_t; // pca9685 MODE1 寄存器配置结构体
-
-
-
 extern int pca9685Setup(const int pinBase, float freq/* = 50*/);
 
-extern void pca9685PWMFreq(int fd, float freq);
+extern void pca9685PWMSetFreq(int fd, float freq);
 extern void pca9685PWMReset(int fd);
 extern void pca9685PWMWrite(int fd, int pin, int on, int off);
 extern void pca9685PWMRead(int fd, int pin, int *on, int *off);

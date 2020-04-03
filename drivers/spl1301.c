@@ -339,15 +339,16 @@ int spl1301Setup(const int pinBase)
 {
     static int fd;
 	struct wiringPiNodeStruct *node;
-
+    
+	// 小于0代表无法找到该i2c接口，输入命令 sudo npi-config 使能该i2c接口
     if ((fd = wiringPiI2CSetupInterface(SPL1301_I2C_DEV, SPL1301_I2C_ADDR)) < 0)
     {
         log_e("spl1301 i2c init failed");
         return -1;
     }
-    // 当无法获取ID时，判定 接入不是SPL1301，或未接入SPL1301
+    // 小于0代表读取失败，代表不存在该 SPL1301 器件，或者器件地址错误
     if(spl1301_get_id(fd) < 0)
-        return -1;
+        return -2;
 
     // 获取出厂标定参数
     spl1301_get_calib_param(fd);
