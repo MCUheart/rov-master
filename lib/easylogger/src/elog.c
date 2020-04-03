@@ -880,17 +880,17 @@ void elog_hexdump(const char *name, uint8_t width, uint8_t *buf, uint16_t size)
  * @param fd   描述符
  * @param name 设备名
  */
-void ERROR_LOG(int fd, device_t *dev)
+void ERROR_LOG(int fd, char *name)
 {
     switch(fd)
     {
         case -1:
-            log_e("%s interface disable", dev->interface); break;
+            log_e("%s interface disable", name); break;
         case -2:
-            log_e("%s no plugged", dev->name); break;
+            log_e("%s no plugged", name); break;
         case -3:
-            log_e("%s init failed", dev->name); break;
+            log_e("%s init failed", name); break;
         default:
-            log_e("%s init failed", dev->name); break;
+            log_e("%s init failed", name); break;
     }
 }

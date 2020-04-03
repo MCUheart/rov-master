@@ -175,15 +175,8 @@ typedef enum {
     ELOG_NO_ERR,
 } ElogErrCode;
 
-typedef struct
-{
-	char *name;     // 器件名
-	char *interface;// 器件接口
-    uint8_t addr;   // 如果是i2c器件，添加此 i2c addr
-}device_t;
-
 /* elog.c */
-void ERROR_LOG(int fd, device_t *dev); // 自行定义的错误打印日志
+void ERROR_LOG(int fd, char *name); // 自行定义的错误打印日志
 ElogErrCode elog_init(void);
 void elog_start(void);
 void elog_set_output_enabled(bool enabled);
