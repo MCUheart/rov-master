@@ -18,34 +18,14 @@
 static ads1118_t ads1118_dev;
 static ads1118_t *ads1118 = &ads1118_dev;
 
-// 存放增益放大参数
-static float vref[6] = {6.144, 4.096, 2.048, 1.024, 0.512, 0.256};
-
-/**
-  * @brief  ads1118 spi数据写入与读取
-  */
-static int16_t ads1118_transmit(int fd, uint16_t data)
-{
-    unsigned char buff[4] = {0};
-    
-    buff[0] = (data >> 8) & 0xff; // SPI传输高位在前 (datasheet P24)
-    buff[1] = (data & 0xff);
-    buff[2] = 0;
-    buff[3] = 0;
-
-    printf("%x %x %x %x\n",buff[0],buff[1],buff[2],buff[3]);
-    wiringPiSPIDataRW(fd, buff, 4);
-
-    printf("%x %x %x %x\n",buff[0],buff[1],buff[2],buff[3]);
-    return (buff[0] << 8) | buff[1]; // SPI传输高位在前
-}
-
 
 /**
   * @brief  ads1118 根据通道获取数据
   */
-static int16_t ads1118_convert(int fd, int channel)
+static uint16_t ads1118_transmit(int fd, int channel)
 {
+    uint8_t spiData[4] = {0};
+
     ads1118->config &= ~CONFIG_MUX_MASK; // 通道寄存器位 清0
     switch (channel) {
         case 0:
@@ -60,10 +40,16 @@ static int16_t ads1118_convert(int fd, int channel)
             log_e("ads1118 channel range in [0, 3]");
     }
 
-    return ads1118_transmit(fd, ads1118->config);
+    spiData[0] = (ads1118->config >> 8) & 0xff; // 写入配置寄存器 (datasheet P24)
+    spiData[1] = (ads1118->config & 0xff);
+    spiData[2] = (ads1118->config >> 8) & 0xff;
+    spiData[3] = (ads1118->config & 0xff);
+
+    wiringPiSPIDataRW(fd, spiData, 4);
+    delay(50); // 等待数据转换完毕
+    printf("adc%d: %d\n",channel, (spiData[0] << 8) | spiData[1]);
+    return (spiData[0] << 8) | spiData[1]; // SPI传输高位在前
 }
-
-
 
 //------------------------------------------------------------------------------------------------------------------
 //
@@ -76,18 +62,14 @@ static int16_t ads1118_convert(int fd, int channel)
   */
 static int myAnalogRead(struct wiringPiNodeStruct *node, int pin)
 {
-    int vol     = 0;
-    int fd      = node->fd;
+    
+    int fd  = node->fd;
     // 获取是 ads1118 的第几通道
     int channel = pin - node->pinBase;
 
-    ads1118->adcVal = ads1118_convert(fd, channel);
+    ads1118->adcVal = ads1118_transmit(fd, channel);
 
-    // 注意FS为 正负2.048，所以计算时为2.048/32768. (满量程是65535)
-    // verf[PGA_2_048] 即为 FSR增益值 ±2.048
-    vol = ads1118->adcVal * (vref[PGA_2_048] / 32768);
-
-    return vol;
+    return ads1118->adcVal;
 }
 
 
@@ -95,6 +77,7 @@ static int myAnalogRead(struct wiringPiNodeStruct *node, int pin)
  * @brief  初始化并设置 ads1118
  * @param 
  *  int pinBase  pinBase > 64
+ *  int spiChannel  使用的是哪一个spi设备(/dev/spidev1.0 == 1)
  *
  *  可修改相关配置: 增益放大、采样率...
  */
@@ -102,8 +85,13 @@ int ads1118Setup(const int pinBase)
 {
     static int fd;
 	struct wiringPiNodeStruct *node;
+
+    /* 注意ads1118配置SPI接口为 SPI mode 1 (CPOL = 0, CPHA = 1)  (datasheet P31) */
+    static uint8_t mode       = 1;
+    static uint8_t spiChannel = 1; // spiChannel = 1代表使用 /dev/spidev1.0 
+
 	// 小于0代表无法找到该spi接口，输入命令 sudo npi-config 使能该spi接口
-    fd = wiringPiSPISetup(1, ADS1118_OSC_CLK); // ads1118使用的 /dev/spidev1.0   1MHz
+    fd = wiringPiSPISetupMode(spiChannel, ADS1118_OSC_CLK, mode); // (/dev/spidev1.0   1MHz  mode1) 
     if (fd < 0)
         return -1;
 
@@ -119,10 +107,13 @@ int ads1118Setup(const int pinBase)
     ads1118->config |= (NOP_DATA_VALID << 1);  // 有效数据,更新配置寄存器
     ads1118->config |= (RESERVED_BIT);         // 保留位
 
-    // 读写数据返回0，代表未接入 ads1118设备
-    if(ads1118_transmit(fd, ads1118->config) == 0)     // 写入配置寄存器
+    /* 检测是否存在 ads1118 器件
+     * 读写数据得到数据为0，代表无数据，即未接入 ads1118，或者spi接口错误
+    */
+    if( (0 == ads1118_transmit(spiChannel, 0)) \
+    || (0 == ads1118_transmit(spiChannel, 1))) // 0代表 AIN0；1代表 AIN1
         return -2;
-
+    
 	// 创建节点加入链表 4 pins 共4个通道
     node = wiringPiNewNode(pinBase, 4);
     if (!node)
@@ -130,8 +121,8 @@ int ads1118Setup(const int pinBase)
         log_e("ads1118 node create failed");
 		return -1;
     }
-    node->fd         = fd;
+    node->fd         = spiChannel;
     node->analogRead = myAnalogRead;
 
-    return fd;
+    return 0;
 }
