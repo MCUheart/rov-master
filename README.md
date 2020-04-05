@@ -2,11 +2,9 @@
 
 <div align="center">
   <a href="https://github.com/zengwangfa/rov-master"><img src="https://zengwangfa.oss-cn-shanghai.aliyuncs.com/rov/rovmaster1.jpg" alt=""></a>
+ <h1>Rov-Master</h1>
 </div>
 
-<div align="center">
-  <a href="https://github.com/zengwangfa/rov-master">:robot: ROV Master</a>
-</div>
 
 <div align="center">
   <a href="http://wiki.friendlyarm.com/wiki/index.php/NanoPi_NEO_Core/zh"><img src="https://img.shields.io/badge/Device-Nanopi NEO Core-brigreen.svg?style=flat-square" alt="STM32"></a>
@@ -20,6 +18,7 @@
   - [EasyLogger](https://github.com/armink/EasyLogger) 是一款超轻量级(ROM<1.6K, RAM<0.3K)、高性能的 C/C++ 日志库。
 
 ## 2. 使用
+- 运行环境：NanoPi NEO
 ```shell
 $ git clone https://github.com/zengwangfa/rovmaster
 $ cd rovmaster
