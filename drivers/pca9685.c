@@ -178,7 +178,7 @@ int pca9685Setup(const int pinBase, float freq)
 {
 	int fd;
 	int settings, autoInc;
-	struct wiringPiNodeStruct *node;
+	struct wiringPiNodeStruct *node = NULL; // 指针初始化为NULL，以免产生段错误
 
   	// PCA9685_OE_PIN，即 GPIOG11 低电平使能
   	pinMode(PCA9685_OE_PIN, OUTPUT);
@@ -189,7 +189,9 @@ int pca9685Setup(const int pinBase, float freq)
   	if (fd < 0)
     	return -1;
 
-	// 小于0代表读取失败，代表不存在该 PCA9685 器件，或者器件地址错误
+	/* 检测是否存在 pca9685 器件
+     * 小于0代表读取失败，代表不存在该 PCA9685 器件，或者器件地址错误
+     */
 	if((settings = wiringPiI2CReadReg8(fd, PCA9685_MODE1)) < 0) 
 		return -2;
 
@@ -207,7 +209,7 @@ int pca9685Setup(const int pinBase, float freq)
 	if (!node)
 	{
      	log_e("pca9685 node create failed");
-		return -1;
+		return -4;
 	}
 
   	// 注册方法

@@ -261,7 +261,9 @@ int oledSetup(void)
 	if (fd < 0)
 		return -1;
 
-	// 小于0代表写入失败，代表不存在 OLED 器件，或者器件地址错误
+	/* 检测是否存在 OLED 器件
+     * 小于0代表写入失败，代表不存在 OLED 器件，或者器件地址错误
+     */
 	if(OLED_WR_Byte(0xAE, OLED_CMD) < 0) //关闭显示
 		return -2;
 

@@ -44,10 +44,10 @@ static uint16_t ads1118_transmit(int fd, int channel)
     spiData[1] = (ads1118->config & 0xff);
     spiData[2] = (ads1118->config >> 8) & 0xff;
     spiData[3] = (ads1118->config & 0xff);
-
+    printf("%x %x %x %x\n",spiData[0],spiData[1],spiData[2],spiData[3]);
     wiringPiSPIDataRW(fd, spiData, 4);
-    delay(50); // 等待数据转换完毕
-    printf("adc%d: %d\n",channel, (spiData[0] << 8) | spiData[1]);
+    delay(1000); // 等待数据转换完毕
+    printf("%x %x %x %x\n",spiData[0],spiData[1],spiData[2],spiData[3]);
     return (spiData[0] << 8) | spiData[1]; // SPI传输高位在前
 }
 
@@ -83,12 +83,12 @@ static int myAnalogRead(struct wiringPiNodeStruct *node, int pin)
  */
 int ads1118Setup(const int pinBase)
 {
-    static int fd;
-	struct wiringPiNodeStruct *node;
+    int fd;
+	struct wiringPiNodeStruct *node = NULL; // 指针初始化为NULL，以免产生段错误
 
-    /* 注意ads1118配置SPI接口为 SPI mode 1 (CPOL = 0, CPHA = 1)  (datasheet P31) */
-    static uint8_t mode       = 1;
-    static uint8_t spiChannel = 1; // spiChannel = 1代表使用 /dev/spidev1.0 
+    /* 注意ads1118配置SPI接口为 SPI mode 1  */
+    uint8_t mode       = 1; // mode 1 (CPOL = 0, CPHA = 1)  (datasheet P31)
+    int     spiChannel = 1; // spiChannel = 1代表使用 /dev/spidev1.0 
 
 	// 小于0代表无法找到该spi接口，输入命令 sudo npi-config 使能该spi接口
     fd = wiringPiSPISetupMode(spiChannel, ADS1118_OSC_CLK, mode); // (/dev/spidev1.0   1MHz  mode1) 
@@ -116,10 +116,11 @@ int ads1118Setup(const int pinBase)
     
 	// 创建节点加入链表 4 pins 共4个通道
     node = wiringPiNewNode(pinBase, 4);
+
     if (!node)
     {
         log_e("ads1118 node create failed");
-		return -1;
+		return -4;
     }
     node->fd         = spiChannel;
     node->analogRead = myAnalogRead;

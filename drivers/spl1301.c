@@ -338,15 +338,19 @@ static int myDigitalRead(struct wiringPiNodeStruct *node, int pin)
 int spl1301Setup(const int pinBase)
 {
     static int fd;
-	struct wiringPiNodeStruct *node;
+	struct wiringPiNodeStruct *node = NULL; // 指针初始化为NULL，以免产生段错误
     
 	// 小于0代表无法找到该i2c接口，输入命令 sudo npi-config 使能该i2c接口
-    if ((fd = wiringPiI2CSetupInterface(SPL1301_I2C_DEV, SPL1301_I2C_ADDR)) < 0)
+    fd = wiringPiI2CSetupInterface(SPL1301_I2C_DEV, SPL1301_I2C_ADDR);
+    if (fd < 0)
     {
         log_e("spl1301 i2c init failed");
         return -1;
     }
-    // 小于0代表读取失败，代表不存在该 SPL1301 器件，或者器件地址错误
+
+    /* 检测是否存在 spl1301 器件
+     * 小于0代表读取失败，代表不存在该 SPL1301 器件，或者器件地址错误
+    */
     if(spl1301_get_id(fd) < 0)
         return -2;
 
@@ -364,7 +368,7 @@ int spl1301Setup(const int pinBase)
 	if (!node)
     {
         log_e("spl1301 node create failed");
-        return -1;
+        return -4;
     }
 
     // 注册方法

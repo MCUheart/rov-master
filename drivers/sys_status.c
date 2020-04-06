@@ -1,5 +1,10 @@
 /*
- * @Description: system status 系统状态获取方法(CPU、内存、硬盘、网卡网速)
+ * @Description: system status 系统状态获取方法
+ *
+ * CPU状态(占用率、温度)
+ * 内存状态(占用率、总大小等)
+ * 硬盘状态(占用率、总大小等)
+ * 网卡网速
  */
 
 #define LOG_TAG "cpu_status"
@@ -43,64 +48,7 @@ float get_cpu_temp(void)
 }
 
  /**
- * @brief  获取 内存情况
- * @param  memory_t 结构体指针
- */
-void get_memory_status(memory_t *memory)
-{
-    FILE *fp;
-    char name1[20]; // 用于保存 内存名称(eg. total/available)
-    char name2[20]; // 用于保存 单位    (eg. kB)
-
-    fp = fopen("/proc/meminfo", "r");
-    if(NULL == fp) // 防止野指针访问，从而产生段错误
-        return;
-    fscanf(fp,"%s %u %s", name1, &memory->total, name2); // 读取第1行 total
-    fscanf(fp,"%s %u %s", name1, &memory->free, name2);  // 读取第2行 free
-    fscanf(fp,"%s %u %s", name1, &memory->available, name2); // 读取第3行 available
-
-    memory->usage_rate = (float)(memory->total - memory->available) / memory->total * 100.0f;
-
-    fclose(fp); 
-}
-
- /**
- * @brief  获取 磁盘状态
- * @param  disk_t 结构体指针
- * @notice 在shell下输入 df 命令可以进行对照
- */
-void get_disk_status(disk_t *disk)
-{
-	FILE *fp;
-	uint32_t b, c; 
-    // 用于保存各个文件系统的 总容量大小、已使用大小    
-    float disk_total = 0, disk_used = 0; 
-	char  a[20], d[20], e[20], f[20], buf[100];
-
-	fp = popen("df", "r");
-    if(NULL == fp) // 防止野指针访问，从而产生段错误
-        return;
-	fgets(buf, sizeof(buf), fp); // 读取第1行描述信息(相当于跳过第1行)
-
-    /*  eg.
-        Filesystem     1K-blocks   Used Available Use% Mounted on
-        udev               85324      0     85324   0% /dev
-    */
-	while (fscanf(fp, "%s %u %u %s %s %s", a, &b, &c, d, e, f) > 0) {
-        disk_total += b;
-		disk_used  += c;
-	}
-
-	disk->total      = disk_total / 1024; // 转换为Mb单位
-	disk->available  = (disk_total - disk_used) / 1024;
-	disk->usage_rate = disk_used / disk_total * 100;
-
-	pclose(fp);
-}
-
-
- /**
- * @brief  获取 cpu总时间
+ * @brief  获取 CPU总运行时间
  * @param  cpuInfo_t 结构体指针
  * @retval uint32_t cpu总时间
  */
@@ -165,6 +113,63 @@ float get_cpu_usage(void)
     
 	cpu_usage = (float)(total_diff - idle_diff) * 100.0f / total_diff;
     return cpu_usage;
+}
+
+
+ /**
+ * @brief  获取 内存情况
+ * @param  memory_t 结构体指针
+ */
+void get_memory_status(memory_t *memory)
+{
+    FILE *fp;
+    char name1[20]; // 用于保存 内存名称(eg. total/available)
+    char name2[20]; // 用于保存 单位    (eg. kB)
+
+    fp = fopen("/proc/meminfo", "r");
+    if(NULL == fp) // 防止野指针访问，从而产生段错误
+        return;
+    fscanf(fp,"%s %u %s", name1, &memory->total, name2); // 读取第1行 total
+    fscanf(fp,"%s %u %s", name1, &memory->free, name2);  // 读取第2行 free
+    fscanf(fp,"%s %u %s", name1, &memory->available, name2); // 读取第3行 available
+
+    memory->usage_rate = (float)(memory->total - memory->available) / memory->total * 100.0f;
+
+    fclose(fp); 
+}
+
+ /**
+ * @brief  获取 磁盘状态
+ * @param  disk_t 结构体指针
+ * @notice 在shell下输入 df 命令可以进行对照
+ */
+void get_disk_status(disk_t *disk)
+{
+	FILE *fp;
+	uint32_t b, c; 
+    // 用于保存各个文件系统的 总容量大小、已使用大小    
+    float disk_total = 0, disk_used = 0; 
+	char  a[20], d[20], e[20], f[20], buf[100];
+
+	fp = popen("df", "r");
+    if(NULL == fp) // 防止野指针访问，从而产生段错误
+        return;
+	fgets(buf, sizeof(buf), fp); // 读取第1行描述信息(相当于跳过第1行)
+
+    /*  eg.
+        Filesystem     1K-blocks   Used Available Use% Mounted on
+        udev               85324      0     85324   0% /dev
+    */
+	while (fscanf(fp, "%s %u %u %s %s %s", a, &b, &c, d, e, f) > 0) {
+        disk_total += b;
+		disk_used  += c;
+	}
+
+	disk->total      = disk_total / 1024; // 转换为Mb单位
+	disk->available  = (disk_total - disk_used) / 1024;
+	disk->usage_rate = disk_used / disk_total * 100;
+
+	pclose(fp);
 }
 
 

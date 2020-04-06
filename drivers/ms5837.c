@@ -239,7 +239,7 @@ static int myDigitalRead(struct wiringPiNodeStruct *node, int pin)
 int ms5837Setup(const int pinBase)
 {
     static int fd;
-	struct wiringPiNodeStruct *node;
+	struct wiringPiNodeStruct *node = NULL; // 指针初始化为NULL，以免产生段错误
 
 	// 小于0代表无法找到该i2c接口，输入命令 sudo npi-config 使能该i2c接口
     if ((fd = wiringPiI2CSetupInterface(MS5837_I2C_DEV, MS583703BA_I2C_ADDR)) < 0)
@@ -247,8 +247,11 @@ int ms5837Setup(const int pinBase)
         log_e("ms5837 i2c init failed");
         return -1;
     }
-	// 写入复位，如果写入失败，代表不存在 MS5837，或者器件地址错误
-	// 复位的目的：复位才可读取校准数据 (datasheet P10) 
+
+    /* 检测是否存在 ms5837 器件
+     * 写入复位，如果写入失败，代表不存在 MS5837，或者器件地址错误
+	 * 复位的目的：复位才可读取校准数据 (datasheet P10) 
+    */
 	if(ms5837_reset(fd) < 0)
 		return -2;	     
 	
@@ -261,13 +264,13 @@ int ms5837Setup(const int pinBase)
 	if (!node)
     {
         log_e("ms5837 node create failed");
-        return -1;
+        return -4;
     }
 
     // 注册方法
     node->fd          = fd;
     node->digitalRead = myDigitalRead;
-
+	
 	return fd;
 }
 

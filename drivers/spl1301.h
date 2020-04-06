@@ -1,9 +1,5 @@
 /*
- * @Description: 深度传感器相关函数
- * @Author: chenxi
- * @Date: 2020-01-14 16:52:11
- * @LastEditTime : 2020-02-10 16:57:25
- * @LastEditors  : chenxi
+ * @Description: SPL1301 深度传感器驱动程序
  */
 
 #ifndef SPL1301_H
