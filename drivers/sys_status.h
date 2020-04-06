@@ -1,9 +1,9 @@
 /*
- * @Description: 获取 CPU、内存、硬盘 状况
+ * @Description: system status 系统状态获取方法(CPU、内存、硬盘、网卡网速)
  */
 
-#ifndef __CPU_STATUS_H_
-#define __CPU_STATUS_H_
+#ifndef __SYS_STATUS_H_
+#define __SYS_STATUS_H_
 
 #include "../user/DataType.h"
 

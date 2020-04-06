@@ -4,7 +4,7 @@
 
 #define LOG_TAG "cpu_status"
 
-#include "cpu_status.h"
+#include "sys_status.h"
 
 #include <elog.h>
 #include <string.h>
