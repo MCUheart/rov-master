@@ -6,12 +6,12 @@
 
 #include <wiringPi.h>
 
-// 蜂鸣器引脚号
+// 蜂鸣器 wiringpi引脚号
 #define BUZZER_PIN 12 
-// 按键引脚号
+// 按键 wiringpi引脚号
 #define BUTTON_PIN 24  
 
-// RGB灯引脚号
+// RGB灯 wiringpi引脚号
 #define LEDR_PIN 13  
 #define LEDG_PIN 14 
 #define LEDB_PIN 10  

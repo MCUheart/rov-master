@@ -1,8 +1,4 @@
 /*
- * focus.c
- *
- *  Created on: 2019年2月30日
- *      Author: zengwangfa
  *      Notes:  变焦摄像头设备(控制通信)
  */
 

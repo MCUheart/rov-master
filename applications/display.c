@@ -3,10 +3,10 @@
  * @Description: ROV状态数据回传与控制命令接收解析，获取 系统状态(CPU、内存、硬盘、网卡网速)
  */
 
-#define LOG_TAG "data"
+#define LOG_TAG "display"
 
 #include "../drivers/oled.h"
-#include "../drivers/cpu_status.h"
+#include "../drivers/sys_status.h"
 
 #include "data.h"
 #include "display.h"
@@ -22,38 +22,47 @@
 void oled_show_status(void)
 {
     char str[20];
-	sprintf(str,"IP  %s", psystem->net.ip);
+    system_status_t *system = get_system_status();
+    
+	sprintf(str,"IP  %s", system->net.ip);
 	OLED_ShowString(0, 0, (uint8_t *)str, 12);
 
-	sprintf(str,"Mem: %0.1f%% of %d Mb", psystem->memory.usage_rate, psystem->memory.total / 1024);
+	sprintf(str,"Mem: %.1f%% of %d Mb", system->memory.usage_rate, system->memory.total / 1024);
 	OLED_ShowString(0,  16, (uint8_t *)str, 12);
 
-	sprintf(str,"Disk: %0.1f%% of %0.1f G", psystem->disk.usage_rate, (float)psystem->disk.total / 1024);
+	sprintf(str,"Disk: %.1f%% of %0.1f G", system->disk.usage_rate, (float)system->disk.total / 1024);
 	OLED_ShowString(0,  32, (uint8_t *)str, 12);
 
-	sprintf(str,"CPU: %0.1f%% ", psystem->cpu.usage_rate);
+	sprintf(str,"CPU:%.1f%%  ", system->cpu.usage_rate);
 	OLED_ShowString(0,  48, (uint8_t *)str, 12);
 
-    if(psystem->net.netspeed < 512) 
+    if(system->net.netspeed < 512) 
     {
         // 此时单位为 kbps
-        sprintf(str,"%0.1f kb/s", psystem->net.netspeed);
+        sprintf(str,"%.1f kb/s", system->net.netspeed);
         OLED_ShowString(70,  48, (uint8_t *)str, 12);
     }
     else 
     {
         // 转换单位为 Mbps
-        sprintf(str,"%0.1f Mb/s", psystem->net.netspeed / 1024);
+        sprintf(str,"%.1f Mb/s", system->net.netspeed / 1024);
         OLED_ShowString(70,  48, (uint8_t *)str, 12);
     }
-
 }
 
+void oled_show_logo(void)
+{
+    OLED_ShowPicture(31, 0, snail_bmp, 64, 64);
+    sleep(1);
+    OLED_Clear();
+}
 /**
   * @brief  oled显示线程
   */
-void *oled_thread(void *arg)
+void *display_thread(void *arg)
 {
+    oled_show_logo();
+
     while(1)
     {
         oled_show_status();
@@ -63,20 +72,27 @@ void *oled_thread(void *arg)
 }
 
 
+
 /**
   * @brief  显示线程 初始化
   */
 int display_thread_init(void)
 {
-    pthread_t oled_tid;
+    int fd;
+    pthread_t display_tid;
 
-    // 先判断设备是否存在，不存在直接返回，不创建对应线程
-    if(oledSetup() < 0)
+    fd = oledSetup();
+    // 判断 对应i2c接口及oled是否存在，不存在直接返回，不创建对应线程
+    if(fd < 0)
+    {
+        // 错误日志打印
+        ERROR_LOG(fd, "oled");
         return -1;
+    }
 
-    log_i("oled init");
-    pthread_create(&oled_tid, NULL, &oled_thread, NULL);
-    pthread_detach(oled_tid);
+    log_i("oled    init");
+    pthread_create(&display_tid, NULL, &display_thread, NULL);
+    pthread_detach(display_tid);
 
     return 0;
 }

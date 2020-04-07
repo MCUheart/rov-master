@@ -210,5 +210,6 @@ int server_thread_init(void)
     pthread_create(&server_tid, NULL, server_thread, NULL);
     pthread_detach(server_tid);
 
+    delay(20);
     return 0;
 }

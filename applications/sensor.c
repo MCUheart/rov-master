@@ -4,7 +4,7 @@
 
 #define LOG_TAG "sensor"
 
-#include "../drivers/cpu_status.h"
+#include "../drivers/sys_status.h"
 #include "../drivers/ads1118.h"
 #include "../drivers/spl1301.h"
 #include "../drivers/ms5837.h"
@@ -20,19 +20,38 @@
 #include <wiringPi.h>
 #include <wiringSerial.h>
 
-#define ADS1118_PIN_BASE      350
+#define ADS1118_PIN_BASE      500 
 #define DEPTH_SENSOR_PIN_BASE 360
+
+adc_t adc_dev;
+adc_t *adc = &adc_dev;
 
 depthSensor_t depthSensor_dev;
 depthSensor_t *depthSensor = &depthSensor_dev;
+
 
 
 Sensor_Type Sensor; //传感器参数
 
 void *adc_thread(void *arg)
 {
+    // TODO 待测试
+    // 存放增益放大参数
+    static float vref[6] = {6.144, 4.096, 2.048, 1.024, 0.512, 0.256};
+   
+    while(1)
+    {
+        sleep(1);
+        
+        // 注意FS为 正负2.048，所以计算时为2.048/32768. (满量程是65535)
+        // verf[PGA_2_048] 即为 FSR增益值 ±2.048
 
-    // printf("adc: %d", analogRead(201));
+        adc->voltage = (float)analogRead(ADS1118_PIN_BASE) * (vref[2] / 32768);
+        adc->current = (float)analogRead(ADS1118_PIN_BASE + 1) * (vref[2] / 32768);
+
+        //printf("voltage %f  current %f\n", adc->voltage, adc->current);
+    }
+
 
     return NULL;
 }
@@ -41,7 +60,7 @@ void *adc_thread(void *arg)
 
 void *jy901_thread(void *arg)
 {
-    // 文件描述符由 arg传递进来
+    // 文件描述符由 创建线程参数 arg
     int fd = *(int *)arg;
 
     while (1)
@@ -57,13 +76,17 @@ void *jy901_thread(void *arg)
 
 
 /**
- * @brief  ms5837 处理函数
+ * @brief  ms5837深度传感器 处理函数
  */
 void ms5837_handle(int pin)
 {
-    //TODO
-    //printf("ms5837 handle\n ");
+    // TODO 待测试
+    depthSensor->depth = 
+    (depthSensor->pressure - depthSensor->init_pressure) / 1.37f;
 
+    //printf("ms5837 depth: %.2f\n", depthSensor->depth);
+    //printf("init_pressure: %.2f\n", depthSensor->init_pressure);
+    //printf("pressure: %.2f\n", depthSensor->pressure);
 }
 
 /**
@@ -71,10 +94,13 @@ void ms5837_handle(int pin)
  */
 void spl1301_handle(int pin)
 {
-    //TODO
-    //printf("spl1301 handle\n ");
-    //printf("P: %d, T: %d\n",digitalRead(DEPTH_SENSOR_PIN_BASE), digitalRead(DEPTH_SENSOR_PIN_BASE + 1));
-    //get_spl1301_depthSensor();
+  
+    depthSensor->depth = (depthSensor->pressure - depthSensor->init_pressure) / 93.0f;
+
+
+    //printf("spl1301 depth: %.2f\n", depthSensor->depth);
+    //printf("init_pressure: %.2f\n", depthSensor->init_pressure);
+    //printf("pressure: %.2f\n", depthSensor->pressure);
 
 }
 
@@ -83,75 +109,95 @@ void spl1301_handle(int pin)
  */
 void *depthSensor_thread(void *arg)
 {
+    // 获取初始压力值
+    depthSensor->init_pressure = digitalRead(depthSensor->pin);
     while(1)
     {
+        // TODO 如果压力值 由很大变为较小，判定为由水中拿至在岸上， init_pressure值重新获取，更新
+
+        // 获取压力值 通道0
+        depthSensor->pressure    = digitalRead(depthSensor->pin);
+        // 获取温度值 通道1
+        depthSensor->temperature = digitalRead(depthSensor->pin + 1);
+
+        /* (预留，此写法过于冗长，后期可删除) 对应深度传感器数据处理函数 */
         depthSensor->handle(depthSensor->pin);
+
         sleep(1);
     }
 }
 
 
-
-
 int depthSensor_init(int pin)
 {
     static int fd;
+    // 对应pin
+    depthSensor->pin = pin;
     /* 依次初始化 spl1301、ms5837，根据内部数据 来判断接入的是哪种传感器 */
-
+    /* TODO 后期是否可以根据 i2c地址来确定是否接入 */
     if((fd = spl1301Setup(pin)) > 0)
     {
-        depthSensor->pin = pin;
         depthSensor->name = "spl1301";
         depthSensor->handle = spl1301_handle;
         return fd;
     }
     else if((fd = ms5837Setup(pin)) > 0)
     {
-        depthSensor->pin = pin;
         depthSensor->name = "ms5837";
         depthSensor->handle = ms5837_handle;
         return fd;
     }
-    else
+    else 
     {
-        depthSensor->name = "No plugged a depthSensor";
+        depthSensor->name = "null";
         depthSensor->handle = NULL; // 防止产生野指针
-        log_e("%s", depthSensor->name);
-        return -1;
+        return -2;
     }
+    
 }
 
 
 int sensor_thread_init(void)
 {
     static int fd;
+
     pthread_t adc_tid;
     pthread_t jy901_tid;
-    pthread_t depthSensor_tid;
+    pthread_t depth_tid;
 
 
-    // 先判断设备是否存在，不存在不创建对应线程
-    if(ads1118Setup(ADS1118_PIN_BASE) > 0)
+    // ADS1118 ADC 初始化
+    fd = ads1118Setup(ADS1118_PIN_BASE); 
+    if(fd < 0) // 先判断设备是否存在，不存在不创建对应线程
+        ERROR_LOG(fd, "ads1118");
+    else
     {
         log_i("ads1118 init");
         pthread_create(&adc_tid, NULL, adc_thread, NULL);
-        pthread_detach(adc_tid);
+        pthread_detach(adc_tid);     
     }
-        
-    if((fd = jy901Setup()) > 0)
+
+    // JY901 九轴 初始化
+    fd = jy901Setup();
+    if(fd < 0)
+        ERROR_LOG(fd, "jy901");
+    else
     {
-        log_i("jy901 init");
+        log_i("jy901   init");
         pthread_create(&jy901_tid, NULL, jy901_thread, &fd);
         pthread_detach(jy901_tid);
     }
 
-    if(depthSensor_init(DEPTH_SENSOR_PIN_BASE) > 0)
+    // 深度传感器 初始化
+    fd = depthSensor_init(DEPTH_SENSOR_PIN_BASE);
+    if(fd < 0)
+        ERROR_LOG(fd ,"depth sersor");
+    else
     {
         log_i("%s init", depthSensor->name);
-        pthread_create(&depthSensor_tid, NULL, depthSensor_thread, NULL);
-        pthread_detach(depthSensor_tid);
+        pthread_create(&depth_tid, NULL, depthSensor_thread, NULL);
+        pthread_detach(depth_tid);
     }
-
 
     return 0;
 }

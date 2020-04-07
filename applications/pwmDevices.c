@@ -1,303 +1,207 @@
 /*
- * @Description: 推进器设备
- * @Author: chenxi
- * @Date: 2020-03-01 22:36:16
- * @LastEditTime: 2020-03-18 19:22:50
- * @LastEditors: chenxi
+ * @Description: 简单PWM设备线程(推进器、云台、机械臂) 
+ *               推进器初始化，推进器PWM线程
  */
 
-#define LOG_TAG "propeller"
+#define LOG_TAG "pwm"
 
-#include <elog.h>
 #include "../drivers/pca9685.h"
 
-#include "pwmDevices.h"
 #include "data.h"
+#include "pwmDevices.h"
 
+#include <elog.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include <unistd.h>
+#include <pthread.h>
 #include <wiringPi.h>
 
-uint8_t Propeller_Init_Flag = 0;
+static propellerPower_t propellerPower = {0}; // 推进器推力控制器
 
-PropellerParameter_Type PropellerParameter = {
-	//初始化推进器参数值【限幅】
-	.PowerMax = 429, //正向最大值
-	.PowerMed = 287, //中值
-	.PowerMin = 172, //反向最小值【反向推力最大】
-
-	.PowerDeadband = 10 //死区值
+static propellerParam_t propellerParam = {
+	.pMax     = 1750, // 正向最大值 单位us
+	.med      = 1500, // 中值
+	.nMax     = 1250, // 反向最大值
+	.deadband = 1,    // 死区值
 };
 
-PropellerDir_Type PropellerDir = {1, 1, 1, 1, 1, 1};		//推进器方向，默认为1
-PropellerPower_Type PropellerPower = {0, 0, 0, 0, 0, 0, 0}; //推进器推力控制器
-PropellerError_Type PropellerError = {0, 0, 0, 0, 0, 0};	//推进器偏差值
+static easyPWM_dev_t light = { // 探照灯
+    .pMax    = 20*1000, // 单位us
+    .nMax    = 0,
+    .speed   = 1000, 
+    .channel = YUNTAI_CHANNEL,
+};    
 
-PropellerPower_Type power_test; //调试用的变量
+static easyPWM_dev_t yuntai = { // 云台 
+    .pMax    = 2000, 
+    .med     = 1500,
+    .nMax    = 1000,
+    .speed   = 50, 
+    .channel = LIGHT_CHANNEL,
+};   
 
-PropellerError_Type Forward = {0, 0, 0, 0, 0, 0};
-PropellerError_Type Retreat = {0, 0, 0, 0, 0, 0};
-PropellerError_Type TurnLeft = {0, 0, 0, 0, 0, 0};
-PropellerError_Type TurnRight = {0, 0, 0, 0, 0, 0};
-Adjust_Parameter AdjustParameter = {1, 1, 1, 1};
+static easyPWM_dev_t robot_arm = { // 机械臂
+    .pMax    = 2000,
+    .med     = 1500,
+    .nMax    = 1000,
+    .speed   = 50, 
+    .channel = ROBOT_ARM_CHANNEL,
+};
 
-int16_t PowerPercent;
 
-/*******************************************
-* 函 数 名：Propeller_Init
-* 功    能：推进器的初始化
-* 输入参数：none
-* 返 回 值：none
-* 注    意：初始化流程：
-*           1,接线,上电，哔-哔-哔三声,表示开机正常
-*           2,给电调2ms或1ms最高转速信号,哔一声
-*           3,给电调1.5ms停转信号,哔一声
-*           4,初始化完成，可以开始控制
-********************************************/
-void Propeller_Init(void) //这边都需要经过限幅在给定  原先为2000->1500
+/**
+ * @brief  计算 PWM 高电平所占的周期
+ * @param  高电平持续的时间，单位us
+ * eg. duty = 1500us = 1.5ms
+ *  高电平所占的周期 = 1.5 / 20 * 4096
+ */
+int calcTicks(int16_t duty)
 {
-	// 初始化推进器
-	//pca9685PWMWrite(0, 0, PropellerPower_Max); //最高转速信号  水平推进器1号  右上
-	//pca9685PWMWrite(5, 0, PropellerPower_Max); //最高转速信号  水平推进器2号  左下
-	//pca9685PWMWrite(3, 0, PropellerPower_Max); //最高转速信号  水平推进器3号  左上
-	//pca9685PWMWrite(2, 0, PropellerPower_Max); //最高转速信号  水平推进器4号  右下
+    float impulseMs;
+	static float cycleMs = 1000.0f / HERTZ; // 总周期20ms
+    impulseMs = duty / 1000.0f; // 单位转换为ms
 
-	//pca9685PWMWrite(4, 0, PropellerPower_Max); //最高转速信号  垂直推进器1号  左中
-	//pca9685PWMWrite(1, 0, PropellerPower_Max); //最高转速信号  垂直推进器2号  右中
-
-	//pca9685PWMWrite(10, 0, PropellerPower_Max); //机械臂
-
-	delay(2000); //2s
-
-	//pca9685PWMWrite(0, 0, PropellerPower_Med); //停转信号
-	//pca9685PWMWrite(5, 0, PropellerPower_Med); //停转信号
-	//pca9685PWMWrite(3, 0, PropellerPower_Med); //停转信号
-	//pca9685PWMWrite(2, 0, PropellerPower_Med); //停转信号
-
-	//pca9685PWMWrite(4, 0, PropellerPower_Med); //停转信号
-	//pca9685PWMWrite(1, 0, PropellerPower_Med); //停转信号
-
-	//pca9685PWMWrite(10, 0, PropellerPower_Med); //机械臂
-
-	// TODO 云台怎么初始化
-	// TIM4_PWM_CH3_D14(1500); //机械臂中值 1000~2000
-	// TIM4_PWM_CH4_D15(2000); //云台中值
-
-	delay(1000);
-
-	Propeller_Init_Flag = 1;
-	log_i("Propeller_init()");
+	return (int)(impulseMs / cycleMs * MAX_PWM + 0.5f);
 }
 
-void PWM_Update(PropellerPower_Type *propeller)
+void propellerPwm_output_limit(int16_t *val)
 {
-	power_test.rightUp = PropellerPower_Med + propeller->rightUp;
-	power_test.leftDown = PropellerPower_Med + propeller->leftDown;
-	power_test.leftUp = PropellerPower_Med + propeller->leftUp;
-	power_test.rightDown = PropellerPower_Med + propeller->rightDown;
+    int i;
+    for(i = 0;i < 6; i++)
+    {
+        if(val[i] > propellerParam.pMax) // 正向限幅
+            val[i] = propellerParam.pMax;
 
-	power_test.leftMiddle = PropellerPower_Med + propeller->leftMiddle;
-	power_test.rightMiddle = PropellerPower_Med + propeller->rightMiddle;
+        if(val[i] < propellerParam.nMax) // 反向限幅
+            val[i] = propellerParam.nMax;    
+    }
+}
 
-	if (1 == Propeller_Init_Flag)
+void easyPwm_output_limit(easyPWM_dev_t *easyPWM)
+{
+    if(easyPWM->cur > easyPWM->pMax) // 正向限幅
+        easyPWM->cur = easyPWM->pMax;
+
+    if(easyPWM->cur < easyPWM->nMax) // 反向限幅
+        easyPWM->cur = easyPWM->nMax;    
+}
+
+/**
+ * @brief  推进器初始化
+ * @notice 
+ *  初始化流程：
+ *  1.接线,上电，哔-哔-哔三声,表示开机正常
+ *  2.给电调2ms或1ms最高转速信号,哔一声
+ *  3.给电调1.5ms停转信号,哔一声
+ *  4.初始化完成，可以开始控制
+ */
+void propeller_init(void) //这边都需要经过限幅在给定  原先为2000->1500
+{
+    int i;
+	// 给定最高转速信号
+    for (i = 0; i < 6; i++)
+	    pwmWrite(PCA9685_PIN_BASE + i, PROPELLER_POWER_P_MAX); 
+
+	sleep(2); // 2s
+
+	// 给定停转信号
+    for (i = 0; i < 6; i++)
+	    pwmWrite(PCA9685_PIN_BASE + i, PROPELLER_POWER_STOP); 
+
+	sleep(1); // 1s
+}
+
+/**
+ * @brief  推进器 PWM 更新
+ * @param  propellerPower_t 推进器动力结构体
+ */
+void propellerPwm_update(propellerPower_t *propeller)
+{
+    int16_t power[6];
+
+	power[0] = PROPELLER_POWER_STOP + propeller->leftUp;     // 水平推进器
+	power[1] = PROPELLER_POWER_STOP + propeller->leftDown; 
+	power[2] = PROPELLER_POWER_STOP + propeller->rightUp;
+	power[3] = PROPELLER_POWER_STOP + propeller->rightDown;
+
+	power[4] = PROPELLER_POWER_STOP + propeller->leftMiddle; // 垂直推进器
+	power[5] = PROPELLER_POWER_STOP + propeller->rightMiddle;
+
+    // PWM限幅
+    propellerPwm_output_limit(power);
+
+    for (int i = 0; i < 6; i++)
+    {   
+	    pwmWrite(PCA9685_PIN_BASE + i, calcTicks(power[i])); 
+    }
+}
+
+
+/**
+ * @brief  简单 PWM 设备处理函数
+ * @param  *easyPWM 简单PWM设备描述符，*action控制指令
+ */
+void easyPWM_devices_handle(easyPWM_dev_t *easyPWM, uint8_t *action)
+{
+    switch (*action)
+    {
+        case 0x01:
+            easyPWM->cur -= easyPWM->speed; // 正向
+            break;
+        case 0x02:
+            easyPWM->cur += easyPWM->speed; // 反向
+            break;
+        case 0x03:
+            easyPWM->cur = easyPWM->med; // 归中
+            break; 
+        default:
+            break;
+    }
+    *action = 0x00; // 清除控制字
+
+    easyPwm_output_limit(easyPWM); // 限幅
+
+    pwmWrite(PCA9685_PIN_BASE + easyPWM->channel, calcTicks(easyPWM->cur));
+}
+
+
+// TODO 收到 server 数据后，再唤醒pwm线程，pwm线程合并
+void *propeller_thread(void *arg)
+{
+    uint8_t action;
+    
+    propeller_init();
+	while (1)
 	{
+        sleep(1);
+        propellerPwm_update(&propellerPower);
 
-		//pca9685PWMWrite(0, 0, power_test.rightUp);   // 水平推进器1号  右上
-		//pca9685PWMWrite(5, 0, power_test.leftDown);  // 水平推进器2号  左下
-		//pca9685PWMWrite(3, 0, power_test.leftUp);	// 水平推进器3号  左上
-		//pca9685PWMWrite(2, 0, power_test.rightDown); // 水平推进器4号  右下
-
-		//pca9685PWMWrite(4, 0, power_test.leftMiddle);  // 垂直推进器1号  左中
-		//pca9685PWMWrite(1, 0, power_test.rightMiddle); // 垂直推进器2号  右中
-	}
-}
-
-
-
-
-short light_value = 0;
-
-/*******************************************
-* 函 数 名：Light_Output_Limit
-* 功    能：灯光亮度输出限制
-* 输入参数：灯光亮度值 0~90%
-* 返 回 值：None
-* 注    意：
-********************************************/
-int Light_Output_Limit(short *value)
-{
-    *value = *value >= 90 ? 90 : *value; //限幅
-    *value = *value <= 0 ? 0 : *value;   //限幅
-    return *value;
-}
-
-/**
-  * @brief  Light_Control(探照灯控制)
-  * @param  控制指令 0x00：不动作  0x01：向上  0x02：向下
-  * @retval None
-  * @notice 
-  */
-void Search_Light_Control(uint8_t *action)
-{
-    switch (*action)
-    {
-    case 0x01:
-        light_value += 5; //变亮
-        break;
-    case 0x02:
-        light_value -= 5; //变暗
-        break;
-    default:
-        break;
+        easyPWM_devices_handle(&yuntai   , &action);
+        easyPWM_devices_handle(&light    , &action);
+        easyPWM_devices_handle(&robot_arm, &action);
     }
-    Light_Output_Limit(&light_value);
-    //pca9685PWMWrite(8, 0, light_value);
-    //pca9685PWMWrite(9, 0, light_value);
-    *action = 0x00; //清除控制字
 }
 
 
 
-
-/*---------------------- Constant / Macro Definitions -----------------------*/
-
-#define RoboticArm_MedValue 1500
-#define YunTai_MedValue 2000
-
-/*----------------------- Variable Declarations -----------------------------*/
-
-ServoType RoboticArm = {
-    .MaxValue = 2000, //机械臂 正向最大值
-    .MinValue = 1000, //机械臂 反向
-    .MedValue = 1500,
-    .Speed = 5 //机械臂当前值
-};             //机械臂
-ServoType YunTai = {
-    .MaxValue = 2500, //机械臂 正向最大值
-    .MinValue = 1500, //机械臂 反向
-    .MedValue = 2000,
-    .Speed = 10 //云台转动速度
-};              //云台
-
-uint16_t propeller_power = 1500;
-short _test_value = 0;
-
-/*----------------------- Function Implement --------------------------------*/
-
-/*******************************************
-* 函 数 名：Servo_Output_Limit
-* 功    能：舵机输出限制
-* 输入参数：输入值：舵机结构体地址 
-* 返 回 值：None
-* 注    意：
-********************************************/
-void Servo_Output_Limit(ServoType *Servo)
+int pwmDevs_thread_init(void)
 {
-    Servo->CurrentValue = Servo->CurrentValue > Servo->MaxValue ? Servo->MaxValue : Servo->CurrentValue; //正向限幅
-    Servo->CurrentValue = Servo->CurrentValue < Servo->MinValue ? Servo->MinValue : Servo->CurrentValue; //反向限幅
-}
+    int fd;
+    pthread_t propeller_tid;
 
-/**
-  * @brief  RoboticArm_Control(机械臂控制)
-  * @param  控制指令 0x00：不动作  0x01：张开  0x02：关闭
-  * @retval None
-  * @notice 
-  */
-void RoboticArm_Control(uint8_t *action)
-{
-    static uint8_t on_off = 0; //自锁开关
-    if (0 == on_off)
+    fd = pca9685Setup(PCA9685_PIN_BASE, HERTZ);
+    // 判断对应 i2c接口、pca9685器件 是否存在，不存在直接返回，不创建对应线程
+    if(fd < 0)
     {
-        on_off = 1;
-        RoboticArm.CurrentValue = RoboticArm.MedValue;
+        // 错误日志打印
+        ERROR_LOG(fd, "pca9685");
+        return -1;
     }
 
-    switch (*action)
-    {
-    case 0x01:
-        RoboticArm.CurrentValue += RoboticArm.Speed;
-        if (RoboticArm.CurrentValue >= RoboticArm.MaxValue)
-        {
-            device_hint_flag |= 0x01;
-        } //机械臂到头标志
-        else
-        {
-            device_hint_flag &= 0xFE;
-        }; //清除机械臂到头标志
+    log_i("pca9685 init");
+    pthread_create(&propeller_tid, NULL, &propeller_thread, NULL);
+    pthread_detach(propeller_tid);
 
-        break;
-    case 0x02:
-        RoboticArm.CurrentValue -= RoboticArm.Speed;
-        if (RoboticArm.CurrentValue <= RoboticArm.MinValue)
-        {
-            device_hint_flag |= 0x01;
-        } //机械臂到头标志
-        else
-        {
-            device_hint_flag &= 0xFE;
-        }; //清除机械臂到头标志
-
-        break;
-    default:
-        break;
-    }
-    Servo_Output_Limit(&RoboticArm); //机械臂舵机限幅
-    //pca9685PWMWrite(10, 0, RoboticArm.CurrentValue);
-    *action = 0x00; //清除控制字
+    return 0;
 }
-
-/**
-  * @brief  YunTai_Control(云台控制)
-  * @param  控制指令 0x00：不动作  0x01：向上  0x02：向下
-  * @retval None
-  * @notice 
-  */
-
-void YunTai_Control(uint8_t *action)
-{
-    static uint8_t on_off = 0; //自锁开关
-    if (0 == on_off)
-    {
-        on_off = 1;
-        YunTai.CurrentValue = YunTai.MedValue;
-    }
-    switch (*action)
-    {
-    case 0x01:
-        YunTai.CurrentValue -= YunTai.Speed; //向上
-        if (YunTai.CurrentValue <= YunTai.MaxValue)
-        {
-            device_hint_flag |= 0x02;
-        } //云台到头标志
-        else
-        {
-            device_hint_flag &= 0xFD;
-        }; //清除云台到头标志
-        break;
-
-    case 0x02:
-        YunTai.CurrentValue += YunTai.Speed; //向下
-        if (YunTai.CurrentValue >= YunTai.MinValue)
-        {
-            device_hint_flag |= 0x02;
-        } //云台到头标志
-        else
-        {
-            device_hint_flag &= 0xFD;
-        }; //清除云台到头标志
-        break;
-
-    case 0x03:
-        YunTai.CurrentValue = YunTai.MedValue;
-        break; //归中
-
-    default:
-        break;
-    }
-    Servo_Output_Limit(&YunTai);
-    // TODO 云台1还是云台2
-    //pca9685PWMWrite(6, 0, YunTai.CurrentValue);
-    *action = 0x00; //清除控制字
-}
-

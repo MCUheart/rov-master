@@ -5,7 +5,7 @@
 #define LOG_TAG "data"
 
 
-#include "../drivers/cpu_status.h"
+#include "../drivers/sys_status.h"
 
 #include "data.h"
 #include "sensor.h"
@@ -24,8 +24,14 @@ Rocker_Type Rocker; // 摇杆数据结构体
 static cmd_t cmd_data;
 static cmd_t *cmd = &cmd_data;
 
-system_status_t  system_dev;
-system_status_t  *psystem = &system_dev;
+static system_status_t  system_dev;
+static system_status_t  *psystem = &system_dev;
+
+// 用于外部使用
+system_status_t *get_system_status(void)
+{   
+    return psystem;
+}
 
 /**
   * @brief  获取浮点型数据 头两位小数的100倍

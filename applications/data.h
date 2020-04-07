@@ -3,7 +3,7 @@
 #define __RC_DATA_H_
 
 #include "../user/DataType.h"
-#include "../drivers/cpu_status.h"
+#include "../drivers/sys_status.h"
 /*
  * 接收数据包长度【包含包头、长度位、校验位】
  * 包头：2 数据长度位: 1 包体：16 校验字：1
@@ -65,23 +65,9 @@ void remote_control_data_analysis(uint8_t *recv_buff); //控制数据解析
 
 void convert_rov_status_data(uint8_t *buff); // 转换需要返回上位机数据
 
-
-
-extern Rocker_Type Rocker;
-
-
-
-extern system_status_t  system_dev;
-extern system_status_t  *psystem;
-
-
-
 int system_status_thread_init(void);
 
-
-
-
-
+system_status_t *get_system_status(void);
 
 
 #endif

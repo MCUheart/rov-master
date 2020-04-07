@@ -14,8 +14,6 @@
 
 #include <wiringPi.h>
 
-#define ON  1
-#define OFF 0
 
 // 定义模拟pwm设备描述符，并指定pin、name
 static softPWM_t ledr = {
@@ -48,37 +46,33 @@ void errorStatus_led(void)
 
 /**
  * @brief  模拟PWM IO设备开关状态转换
- * @param  flag: 开ON  关OFF
  *  这里的作用由于 RGB开状态为低电平，Beep开状态为高电平，根据名字进行转换
  */
-void IO_DEVICE(softPWM_t *pwm,int flag)
+void IO_DEVICE_OFF(softPWM_t *pwm)
 {
-    if(ON == flag)
-    {
-        if(!strncmp(pwm->name,"led", 3)) // RGB低电平点亮，与蜂鸣器状态相反	 
-            IO_OUPUT_LOW(pwm->pin); 
-        else 
-            IO_OUPUT_HIGH(pwm->pin); 
-    }
-    else
-    {
-        if(!strncmp(pwm->name,"led", 3)) 
-            IO_OUPUT_HIGH(pwm->pin); 
-        else 
-            IO_OUPUT_LOW(pwm->pin); 
-    }
+    if(!strncmp(pwm->name,"led", 3)) 
+        IO_OUPUT_HIGH(pwm->pin); 
+    else 
+        IO_OUPUT_LOW(pwm->pin); 
 }
 
+void IO_DEVICE_ON(softPWM_t *pwm)
+{
+    if(!strncmp(pwm->name,"led", 3)) // RGB低电平点亮，与蜂鸣器状态相反	 
+        IO_OUPUT_LOW(pwm->pin); 
+    else 
+        IO_OUPUT_HIGH(pwm->pin); 
+}
 
 
 /**
  * @brief  模拟pwm设备设置
  * @param 
- *  softPWM_t *pwm  pwm描述符
- *  uint32_t  time  持续时间 (单位 ms)
- *  uint8_t   per   周期 (单位 ms)
- *  uint8_t   duty  占空比 (0~100)
- *  uint8_t   flag  如果为1，则为无尽模式
+ *  softPWM_t *pwm   pwm描述符
+ *  uint32_t  time   持续时间 (单位 ms)
+ *  uint8_t   period 周期 (单位 ms)
+ *  uint8_t   duty   占空比 (0~100)
+ *  uint8_t   flag   如果为1，则为无尽模式
  */
 void sotfPwmSet(softPWM_t *pwm,
                 uint32_t  time, // 持续时间
@@ -109,21 +103,21 @@ void softPwm_process(softPWM_t *pwm)
     if(pwm->time >= 1) 
         pwm->time--; // 持续时间-1
 
-    // 判断 持续时间未清理 或 无尽模式是否开启
+    // 判断 持续时间是否到达 或 无尽模式是否开启
     if((pwm->time != 0) || (pwm->flag == 1)) 
     {
-        pwm->cnt++; 
         // 计数 >= 周期，清零
-        pwm->cnt = pwm->cnt >= pwm->period ? 0 : pwm->cnt; 
+        if(++pwm->cnt >= pwm->period)
+            pwm->cnt = 0; 
 
         // 小于占空比时，继续输出高
         if(pwm->cnt <= pwm->period * pwm->duty/100)
-            IO_DEVICE(pwm, ON);  // 设备开
+            IO_DEVICE_ON(pwm);  // 设备开
         else
-            IO_DEVICE(pwm, OFF); // 设备关
+            IO_DEVICE_OFF(pwm); // 设备关
     }
     else 
-        IO_DEVICE(pwm, OFF); // 设备关
+        IO_DEVICE_OFF(pwm); // 设备关
 } 
 
 /**
@@ -137,7 +131,7 @@ void *softPWM_thread(void *arg)
     sotfPwmSet(&ledr, 1000, 500, 50 , 0);
     sotfPwmSet(&ledg, 1000, 500, 50 , 0);
     sotfPwmSet(&ledb, 1000, 500, 50 , 1);
-    sotfPwmSet(&beep, 500, 200, 10, 0);
+    //sotfPwmSet(&beep, 500, 200, 10, 0);
     while(1)
     {
         delay(10); // 休眠时间与周期有关
