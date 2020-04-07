@@ -889,8 +889,27 @@ void ERROR_LOG(int fd, char *name)
         case -2:
             log_e("%s no plugged", name); break;
         case -3:
-            log_e("%s init failed", name); break;
+            log_e("%s device has some problems", name); break;
+        case -4:
+            log_e("%s node create failed", name); break;
         default:
             log_e("%s init failed", name); break;
     }
 }
+
+void easylogger_init(void)
+{
+  // 初始化 EasyLogger
+  elog_init();
+  /* 设置 EasyLogger 日志格式 */
+  elog_set_fmt(ELOG_LVL_ASSERT, ELOG_FMT_ALL);
+  elog_set_fmt(ELOG_LVL_ERROR, ELOG_FMT_LVL | ELOG_FMT_TAG | ELOG_FMT_TIME);
+  elog_set_fmt(ELOG_LVL_WARN, ELOG_FMT_LVL | ELOG_FMT_TAG | ELOG_FMT_TIME);
+  elog_set_fmt(ELOG_LVL_INFO, ELOG_FMT_LVL | ELOG_FMT_TAG | ELOG_FMT_TIME);
+  elog_set_fmt(ELOG_LVL_DEBUG, ELOG_FMT_TIME);
+  elog_set_fmt(ELOG_LVL_VERBOSE, ELOG_FMT_ALL & ~ELOG_FMT_FUNC);
+
+  elog_set_text_color_enabled(true);
+  elog_start();
+}
+

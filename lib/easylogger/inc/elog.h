@@ -175,8 +175,10 @@ typedef enum {
     ELOG_NO_ERR,
 } ElogErrCode;
 
-/* elog.c */
+/* 自定义 */
+void easylogger_init(void);
 void ERROR_LOG(int fd, char *name); // 自行定义的错误打印日志
+/* elog.c */
 ElogErrCode elog_init(void);
 void elog_start(void);
 void elog_set_output_enabled(bool enabled);

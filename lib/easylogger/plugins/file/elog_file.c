@@ -149,7 +149,7 @@ void elog_file_write(const char *log, size_t size)
 #endif
     }
 
-    fwrite(log, size, 1, fp);
+    //fwrite(log, size, 1, fp);
 
 #ifdef ELOG_FILE_FLUSH_CAHCE_ENABLE
     fflush(fp);
