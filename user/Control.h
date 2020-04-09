@@ -1,22 +1,26 @@
-/*
- * @Description: 运动总控制（未完成）
- * @Author: chenxi
- * @Date: 2020-02-19 13:13:56
- * @LastEditTime: 2020-03-18 19:32:46
- * @LastEditors: chenxi
- */
-
 #ifndef __CONTROL_H_
 #define __CONTROL_H_
 
 #include "DataType.h"
-#include "../applications/data.h"
 
-void Angle_Control(void);
-void Depth_PID_Control(float expect_depth, float sensor_depth);
-void FourtAxis_Control(Rocker_Type *rc);
-void SixAxis_Control(Rocker_Type *rc);//未实现
-void Convert_RockerValue(Rocker_Type *rc); //获取摇杆值
-void Speed_Buffer(short *now_value, short *last_value, short BufferRange);
+typedef struct
+{
+    int16_t fx;   // 摇杆 X轴动力 (X正方向为机头方向)
+    int16_t fy;   // 摇杆 Y轴动力
+    int16_t fz;   // 摇杆 Z轴动力
+    int16_t yaw;  // 偏航角度
+    int16_t force;// 合力大小
+
+    float deg;    // 合力角度值
+    float rad;    // 合力弧度角
+    float percent;// 动力百分比
+    float depth;  // 摇杆的期望深度
+
+}rockerInfo_t; /* 摇杆信息 */ 
+
+
+
+
 
 #endif
+
