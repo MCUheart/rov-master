@@ -31,7 +31,14 @@ depthSensor_t *depthSensor = &depthSensor_dev;
 
 
 
-Sensor_Type Sensor; //传感器参数
+
+
+/*******************************************************************************************************************/
+//
+// 线程
+//
+/*******************************************************************************************************************/
+
 
 void *adc_thread(void *arg)
 {
@@ -46,7 +53,7 @@ void *adc_thread(void *arg)
         // 注意FS为 正负2.048，所以计算时为2.048/32768. (满量程是65535)
         // verf[PGA_2_048] 即为 FSR增益值 ±2.048
 
-        adc->voltage = (float)analogRead(ADS1118_PIN_BASE) * (vref[2] / 32768);
+        adc->voltage = (float)analogRead(ADS1118_PIN_BASE)     * (vref[2] / 32768);
         adc->current = (float)analogRead(ADS1118_PIN_BASE + 1) * (vref[2] / 32768);
 
         //printf("voltage %f  current %f\n", adc->voltage, adc->current);
@@ -143,7 +150,7 @@ int depthSensor_init(int pin)
     }
     else if((fd = ms5837Setup(pin)) > 0)
     {
-        depthSensor->name = "ms5837";
+        depthSensor->name = "ms5837 ";
         depthSensor->handle = ms5837_handle;
         return fd;
     }
@@ -184,7 +191,7 @@ int sensor_thread_init(void)
     else
     {
         log_i("jy901   init");
-        pthread_create(&jy901_tid, NULL, jy901_thread, &fd);
+        pthread_create(&jy901_tid, NULL, jy901_thread, &fd); 
         pthread_detach(jy901_tid);
     }
 

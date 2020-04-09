@@ -5,19 +5,7 @@
 #ifndef __DATA_TYPE_H_
 #define __DATA_TYPE_H_
 #include <stdint.h>
-/*
-typedef char int8_t;
-typedef unsigned char uint8_t;
 
-typedef short int16_t;
-typedef unsigned short uint16_t;
-
-typedef int int32_t;
-typedef unsigned int uint32_t;
-
-typedef long long int64_t;
-typedef unsigned long long uint64_t;
-*/
 #define my_abs(x) (((x) > 0) ? (x) : -(x))
 
 /* ------------------------【数据结构体定义】---------------------------------*/
@@ -118,6 +106,8 @@ typedef enum
 	DirectionMode_MAX,
 } DirectionMode_Eunm; //枚举方向系数模式
 
+
+
 /* ------------------------【重要定义】---------------------------------*/
 
 #define LED_EVENT (1 << 0)	//LED事件标志位
@@ -131,8 +121,8 @@ typedef enum
 #define MS5837_EVENT (1 << 8) //Sensor事件标志位
 
 #define PI 3.141592f					 //大写标明其为常量
-#define Rad2Deg(Rad) (Rad * 180.0f / PI) //弧度制转角度值
-#define Deg2Rad(Deg) (Deg * PI / 180.0f) //角度值转弧度制
+#define Rad2Deg(rad) (rad * 180.0f / PI) //弧度制转角度值
+#define Deg2Rad(deg) (deg * PI / 180.0f) //角度值转弧度制
 
 /* --------------【电池 参数】-----------------*/
 

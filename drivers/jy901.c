@@ -131,6 +131,5 @@ int jy901Setup(void)
 	if (fd < 0)
 		return -1;
 
-
 	return fd;
 }

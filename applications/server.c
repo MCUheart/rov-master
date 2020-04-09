@@ -26,6 +26,8 @@
 static int sever_sock  = -1;
 static int client_sock = -1;
 
+/* 上位机的控制数据 */
+static cmd_t cmd_data;
 /* 接收数据包 */
 static uint8_t recv_buff[RECV_DATA_LEN] = {0};
 
@@ -116,7 +118,7 @@ void *recv_thread(void *arg)
         }
         //print_hex_data("recv", recv_buff, RECV_DATA_LEN);
         /* 遥控数据解析 */
-        remote_control_data_analysis(recv_buff);
+        remote_control_data_analysis(recv_buff, &cmd_data);
     }
     return NULL;
 }

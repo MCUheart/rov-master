@@ -3,14 +3,13 @@
 
 #include "../user/DataType.h"
 
-#define MS5837_I2C_DEV  "/dev/i2c-1"  // SPL1301 使用的 I2C设备
+#define MS5837_I2C_DEV  "/dev/i2c-1"  // MS5837 使用的 I2C设备
 /* MS5837-30BA address is 1110110x (write: x=0, read: x=1). */
 #define MS583703BA_I2C_ADDR         0x76  // MS5387 I2C 地址 (datasheet P9)
 
 #define MS583703BA_RESET            0x1E
 #define MS583703BA_ADC_RD           0x00
 #define	MS583703BA_PROM_RD          0xA0
-#define MS583703BA_PROM_CRC         0xAE
 
 /* 转换命令：压力 (datasheet P9) */
 #define MS583703BA_D1_OSR_256	    0x40

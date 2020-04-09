@@ -18,12 +18,6 @@
 #include <sys/shm.h>
 
 
-Rocker_Type Rocker; // 摇杆数据结构体
-
-
-static cmd_t cmd_data;
-static cmd_t *cmd = &cmd_data;
-
 static system_status_t  system_dev;
 static system_status_t  *psystem = &system_dev;
 
@@ -64,7 +58,7 @@ uint8_t calculate_check_sum(uint8_t *buff, uint8_t len)
   * @param  控制数据包 *buff
   * @notice 从第四个字节开始为控制字符
   */
-void remote_control_data_analysis(uint8_t *buff) //控制数据解析
+void remote_control_data_analysis(uint8_t *buff, cmd_t *cmd) //控制数据解析
 {
     uint8_t rxCheck = 0; //尾校验字
 
@@ -75,24 +69,26 @@ void remote_control_data_analysis(uint8_t *buff) //控制数据解析
             // 获取校验位
             rxCheck = calculate_check_sum(buff, RECV_DATA_LEN - 1);
 
-
             if (rxCheck == buff[RECV_DATA_LEN]) // 校验位核对
             {
+                /* 开关类 */
                 cmd->depth_lock = buff[3];  // 深度锁定
                 cmd->sport_lock = buff[4];  // 方向锁定
 
+                cmd->all_lock   = buff[18]; // 运动控制总开关
+
+                /* 姿态类 */
                 cmd->move_back  = buff[5];  // 前后
                 cmd->left_right = buff[6];  // 左右平移
                 cmd->up_down    = buff[7];  // 垂直
                 cmd->rotate     = buff[8];  // 旋转
 
+                /* 设备类 */
                 cmd->power      = buff[9];  // 动力控制  推进器动力系数
                 cmd->light      = buff[10]; // 灯光控制
                 cmd->camera     = buff[11]; // 变焦摄像头控制
                 cmd->yuntai     = buff[12]; // 云台控制
                 cmd->arm        = buff[13]; // 机械臂控制
-
-                cmd->all_lock = buff[18];   // 总开关
             }
         }
     }
@@ -113,7 +109,7 @@ void convert_rov_status_data(uint8_t *buff) // 转换需要返回上位机数据
     uint16_t tpitch;
     uint16_t tyaw;
     static unsigned char speed_test;
-
+/*
     troll = (short)((Sensor.JY901.Euler.Roll + 180) * 100); //数据转换:将角度数据转为正值并放大100倍
     tpitch = (short)((Sensor.JY901.Euler.Pitch + 180) * 100);
     tyaw = (short)((Sensor.JY901.Euler.Yaw + 180) * 100);
@@ -150,14 +146,16 @@ void convert_rov_status_data(uint8_t *buff) // 转换需要返回上位机数据
 
     buff[23] = 0x0; // 保留
     buff[24] = 0x0; // 保留
-
+*/
     buff[25] = calculate_check_sum(buff, RETURN_DATA_LEN - 1);//获取校验和
 }
 
 
-
-
-
+/*******************************************************************************************************************/
+//
+// 线程
+//
+/*******************************************************************************************************************/
 
 /**
  * @brief  获取CPU状态 线程
@@ -169,7 +167,6 @@ void *cpu_status_thread(void *arg)
     {
         psystem->cpu.temperature = get_cpu_temp();
         psystem->cpu.usage_rate  = get_cpu_usage();
-
     }
 }
 
@@ -198,7 +195,7 @@ void *mem_disk_status_thread(void *arg)
         // 获取内存使用情况
         get_memory_status(&psystem->memory);
         // 获取硬盘使用情况
-        get_disk_status(&psystem->disk);   
+        get_disk_status  (&psystem->disk);   
         // 1s更新一次
         sleep(1); 
     }

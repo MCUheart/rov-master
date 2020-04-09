@@ -44,10 +44,10 @@ static uint16_t ads1118_transmit(int fd, int channel)
     spiData[1] = (ads1118->config & 0xff);
     spiData[2] = (ads1118->config >> 8) & 0xff;
     spiData[3] = (ads1118->config & 0xff);
-    printf("%x %x %x %x\n",spiData[0],spiData[1],spiData[2],spiData[3]);
+    //printf("%x %x %x %x\n",spiData[0],spiData[1],spiData[2],spiData[3]);
     wiringPiSPIDataRW(fd, spiData, 4);
     delay(1000); // 等待数据转换完毕
-    printf("%x %x %x %x\n",spiData[0],spiData[1],spiData[2],spiData[3]);
+    //printf("%x %x %x %x\n",spiData[0],spiData[1],spiData[2],spiData[3]);
     return (spiData[0] << 8) | spiData[1]; // SPI传输高位在前
 }
 
@@ -110,18 +110,15 @@ int ads1118Setup(const int pinBase)
     /* 检测是否存在 ads1118 器件
      * 读写数据得到数据为0，代表无数据，即未接入 ads1118，或者spi接口错误
     */
-    if( (0 == ads1118_transmit(spiChannel, 0)) \
-    || (0 == ads1118_transmit(spiChannel, 1))) // 0代表 AIN0；1代表 AIN1
+    if((0 == ads1118_transmit(spiChannel, 0)) && (0 == ads1118_transmit(spiChannel, 1))) // 0代表 AIN0；1代表 AIN1
         return -2;
     
 	// 创建节点加入链表 4 pins 共4个通道
     node = wiringPiNewNode(pinBase, 4);
 
     if (!node)
-    {
-        log_e("ads1118 node create failed");
 		return -4;
-    }
+
     node->fd         = spiChannel;
     node->analogRead = myAnalogRead;
 

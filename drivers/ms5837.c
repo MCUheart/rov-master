@@ -25,7 +25,7 @@ static ms5837_t *ms5837 = &ms5837_dev;
   * @param  数组
   * @retval 返回crc 4bit校验
   */
-uint8_t _crc4(uint16_t *n_prom)
+uint8_t ms5837_crc4(uint16_t *n_prom)
 {
 	int32_t  cnt;
 	uint32_t n_rem = 0; // crc 余数
@@ -70,23 +70,30 @@ int ms5837_reset(int fd)
 int ms5837_get_calib_param(int fd)
 {	
 	static int i;
+
 	for (i = 0; i <= 6; i++) 
 	{
 		// 读取prom中的出厂标定参数
     	ms5837->c[i] = \
 		wiringPiI2CReadReg16(fd, MS583703BA_PROM_RD + (i * 2));
+
+		/* 高8位 与 低8位互换，由于i2c读取先读取 MSB */
+		ms5837->c[i] = (ms5837->c[i] << 8) | (ms5837->c[i] >> 8); 
+		//printf("param 0x%x\n",ms5837->c[i]);
 	}
+
 	/* crc校验为 C[0]的 bit[15,12] */
 	ms5837->crc = (uint8_t)(ms5837->c[0] >> 12);
+	//printf("param crc:%x\n",ms5837->crc);
+
 	// 工厂定义参数为 c[0] 的bit[14,0]
 	ms5837->factory_id = (uint8_t)(ms5837->c[0] & 0x0fff);
-	
 	/* 
 	 * crc校验为用于判断 ms5837 是否初始化成功 
 	 * 或者说为了检测接入的设备是否是 ms5837传感器
 	*/
-	if(ms5837->crc == _crc4(ms5837->c))
-		return 1;
+	if(ms5837->crc == ms5837_crc4(ms5837->c))
+		return 1; // 校验成功，返回1
 
 	return -1;
 }
@@ -101,24 +108,35 @@ int ms5837_get_calib_param(int fd)
  */
 uint32_t ms5837_get_conversion(int fd, uint8_t command)
 {
- 	uint8_t temp[3];
+	static uint8_t temp[10];
+	uint8_t low;
 	uint32_t conversion;
+
 	// 1.先写入转换命令(即指定转换传感器及精度) (datasheet P11)
 	wiringPiI2CWrite(fd, command);
 
- 	// 2.延时等待转换完成  读取8196转换值得关键，必须大于 datasheet P2页中的18.08毫秒
-	delay(30);
-	
-	// 3.在写入 ADC read命令
-	wiringPiI2CWrite(fd, MS583703BA_ADC_RD);
+ 	/* 2.延时等待转换完成  
+	 * eg.读取8196精度时，等待时间必须大于 datasheet P2页中的18.08毫秒，否则无法获取数据
+	 */ 
+	delay(50);
+	//wiringPiI2CWrite(fd, MS583703BA_ADC_RD);
+	//conversion = wiringPiI2CReadReg16(fd, MS583703BA_ADC_RD);
+	//low = wiringPiI2CReadReg8(fd, MS583703BA_ADC_RD);
 
-	// 4.读取 24bit的转换数据 高位在前
+	//printf("conversion 0x%x %d\n",conversion, conversion);
+	//conversion = (conversion << 8) | (conversion >> 8);
+	//printf("2 conversion: 0x%x %d\n",conversion, conversion);
+	// 3.在写入 ADC read命令
+	//wiringPiI2CWrite(fd, MS583703BA_ADC_RD);
+	wiringPiI2CReadRegBlock(fd, MS583703BA_ADC_RD, temp);
+	/*// 4.读取 24bit的转换数据 高位在前
 	temp[0] = wiringPiI2CRead(fd); // bit 23-16
 	temp[1] = wiringPiI2CRead(fd); // bit 8-15
-	temp[2] = wiringPiI2CRead(fd); // bit 0-7
+	temp[2] = wiringPiI2CRead(fd); // bit 0-7*/
+	//printf("temp: 0x%x 0x%x 0x%x\n",temp[0], temp[1],temp[2]);
 
 	conversion = ((uint32_t)temp[0] <<16) | ((uint32_t)temp[1] <<8) | ((uint32_t)temp[2]);
-
+	//printf("2 conversion: 0x%x %d\n",conversion, conversion);
 	return conversion;
 }
 
@@ -134,6 +152,7 @@ void ms5837_cal_raw_temperature(int fd)
 	ms5837->dT = ms5837->D2_Temp - (((uint32_t)ms5837->c[5]) * 256);
 	// 实际的温度
 	ms5837->TEMP = 2000 + ms5837->dT * ((uint32_t)ms5837->c[6]) / 8388608; // 8388608 = 2^23,这里不采用右移23位，因为该数据为有符号 
+
 }
 
 /**
@@ -143,7 +162,7 @@ void ms5837_cal_raw_temperature(int fd)
 void ms5837_cal_pressure(int fd)
 {
 	int64_t  Ti, OFFi, SENSi;
-	int32_t dT_squ;
+	int32_t  dT_squ; // dT的乘方
 	uint32_t temp_minus_squ, temp_plus_squ;
 
 	// 获取原始压力数字量
@@ -187,6 +206,8 @@ void ms5837_cal_pressure(int fd)
 	ms5837->temperature = (ms5837->TEMP - Ti) / 100;
 	// 实际压力值
 	ms5837->pressure = ms5837->P / 10;
+	//printf("temperature %.2f\n",ms5837->temperature);
+	//printf("pressure    %.2f\n",ms5837->pressure);
 }
 
 
@@ -243,10 +264,7 @@ int ms5837Setup(const int pinBase)
 
 	// 小于0代表无法找到该i2c接口，输入命令 sudo npi-config 使能该i2c接口
     if ((fd = wiringPiI2CSetupInterface(MS5837_I2C_DEV, MS583703BA_I2C_ADDR)) < 0)
-    {
-        log_e("ms5837 i2c init failed");
         return -1;
-    }
 
     /* 检测是否存在 ms5837 器件
      * 写入复位，如果写入失败，代表不存在 MS5837，或者器件地址错误
@@ -254,7 +272,7 @@ int ms5837Setup(const int pinBase)
     */
 	if(ms5837_reset(fd) < 0)
 		return -2;	     
-	
+
 	/* 获取校准参数，若获取的数据CRC校验失败，则判定 接入的不是MS5837，或未接入MS5837 */
 	if(ms5837_get_calib_param(fd) < 0) 
 		return -3;
@@ -262,10 +280,7 @@ int ms5837Setup(const int pinBase)
     // 创建节点，2个通道，一个为压力值，一个为温度值
     node = wiringPiNewNode(pinBase, 2);
 	if (!node)
-    {
-        log_e("ms5837 node create failed");
         return -4;
-    }
 
     // 注册方法
     node->fd          = fd;

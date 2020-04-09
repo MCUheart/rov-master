@@ -343,10 +343,7 @@ int spl1301Setup(const int pinBase)
 	// 小于0代表无法找到该i2c接口，输入命令 sudo npi-config 使能该i2c接口
     fd = wiringPiI2CSetupInterface(SPL1301_I2C_DEV, SPL1301_I2C_ADDR);
     if (fd < 0)
-    {
-        log_e("spl1301 i2c init failed");
         return -1;
-    }
 
     /* 检测是否存在 spl1301 器件
      * 小于0代表读取失败，代表不存在该 SPL1301 器件，或者器件地址错误
@@ -366,10 +363,7 @@ int spl1301Setup(const int pinBase)
     // 创建节点加入链表，2个通道，一个为压力值，一个为温度值
     node = wiringPiNewNode(pinBase, 2);
 	if (!node)
-    {
-        log_e("spl1301 node create failed");
         return -4;
-    }
 
     // 注册方法
     node->fd          = fd;

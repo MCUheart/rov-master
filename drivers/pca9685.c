@@ -207,10 +207,7 @@ int pca9685Setup(const int pinBase, float freq)
 	// 创建节点 16 pins [0..15] + [16] for all
 	node = wiringPiNewNode(pinBase, PIN_ALL + 1);
 	if (!node)
-	{
-     	log_e("pca9685 node create failed");
 		return -4;
-	}
 
   	// 注册方法
 	node->fd			= fd;

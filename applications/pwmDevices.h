@@ -35,7 +35,6 @@ typedef struct
 /* 推进器动力控制器 */
 typedef struct
 {
-	float percent; // 推进器动力百分比
 	int16_t leftUp;
 	int16_t rightUp;
 	int16_t leftDown;
@@ -58,7 +57,7 @@ typedef struct
 
 } easyPWM_dev_t;
 
-
+// PWM设备线程初始化
 int pwmDevs_thread_init(void);
 
 

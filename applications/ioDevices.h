@@ -37,7 +37,7 @@ typedef struct
 
 }softPWM_t; 
 
-
+// IO口设备线程初始化
 int ioDevs_thread_init(void);
 
 

@@ -3,8 +3,12 @@
 
 #include "DataType.h"
 
+#define ROV_MASTER_VERSION "1.0.0"
+
+
+
 int system_init(void);
 
-void oled_show(void);
+
 #endif
 

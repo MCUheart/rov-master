@@ -27,10 +27,8 @@ typedef struct
 }adc_t;
 
 
+// 传感器线程初始化
 int sensor_thread_init(void);
-void print_sensor_info(void); // 打印传感器信息
 
-
-extern Sensor_Type Sensor; //传感器参数
 
 #endif
