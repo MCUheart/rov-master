@@ -7,7 +7,7 @@
 
 
 <div align="center">
-  <a href="http://wiki.friendlyarm.com/wiki/index.php/NanoPi_NEO_Core/zh"><img src="https://img.shields.io/badge/Device-Nanopi NEO Core-brigreen.svg?style=flat-square" alt=""></a>
+  <a href="http://wiki.friendlyarm.com/wiki/index.php/NanoPi_NEO_Core/zh"><img src="https://img.shields.io/badge/Device-Nanopi NEO Core-brigreen.svg?style=flat-square" alt="Device"></a>
   <a href="https://img.shields.io"><img src="https://img.shields.io/github/repo-size/zengwangfa/rov-master?style=flat-square" alt="Size"></a>
 </div>
 
@@ -35,6 +35,7 @@ $ ./build.sh
 build.sh 中安装相关依赖库
 
 ## 2.2 编译与执行
+由于使用 WiringNP 库，需要 root 权限：
 
 ```shell
 $ make 
@@ -42,6 +43,7 @@ $ sudo ./rovmaster
 ```
 
 ## 2.3 注意事项
+
 ### 2.3.1 设备未打开
 若执行时提示无法打开某设备，输入 `sudo npi-config` > `Advanced Options` 中使能相关设备：
 
@@ -76,8 +78,8 @@ $ ./build.sh
 # 3. 进度
 - 驱动模块
 	- [x] ADS1118 (ADC)
-		- [ ] 电压检测 (待实际测试)
-		- [ ] 电流检测 (待实际测试)
+		- [x] 电压检测 (待实际测试)
+		- [x] 电流检测 (待实际测试)
 	- [ ] PCA9685 (PWM) (待实际测试)
 	- [x] 深度传感器
 		- [x] SPL1301 (待实际测试)
@@ -91,10 +93,10 @@ $ ./build.sh
 		- [x] RGB
 		- [x] 按键
 		- [x] 蜂鸣器
-	- [ ] PWM设备
-		- [ ] 云台
-		- [ ] 探照灯
-		- [ ] 机械臂
+	- [ ] PWM设备 (待实际测试)
+		- [x] 云台
+		- [x] 探照灯
+		- [x] 机械臂
 	- [x] OLED
 	- [x] 九轴
 	- [ ] 音频MIC
@@ -110,8 +112,8 @@ $ ./build.sh
 	- [ ] 传感器融合
 
 - 控制模块
-	- [ ] 手柄控制
-	- [ ] 定深控制
+	- [x] 手柄控制 (待实际测试)
+	- [x] 定深控制 (待实际测试)
 	- [ ] 定向控制
 	- [ ] 变焦摄像头控制
 
