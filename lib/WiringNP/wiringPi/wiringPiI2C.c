@@ -153,7 +153,27 @@ int wiringPiI2CReadReg16 (int fd, int reg)
     return data.word & 0xFFFF ;
 }
 
+/* Returns the number of read bytes */
+int wiringPiI2CReadRegBlock(int fd, int reg, unsigned char *values)
+{
+  int i;
+  union i2c_smbus_data data;
+  data.block[0] = 3;
+  if (i2c_smbus_access (fd, I2C_SMBUS_READ, reg, I2C_SMBUS_BLOCK_DATA , &data))
+  {
+    printf("len:%d\n",data.block[0]);
+    return -1 ;
+  }
 
+  else 
+  {
+
+    printf("len2:%d\n",data.block[0]);
+    for (i = 1; i <= data.block[0]; i++)
+      values[i-1] = data.block[i];
+    return data.block[0]; // 返回数据长度
+  }
+}
 /*
  * wiringPiI2CWrite:
  *	Simple device write
@@ -187,6 +207,7 @@ int wiringPiI2CWriteReg16 (int fd, int reg, int value)
   data.word = value ;
   return i2c_smbus_access (fd, I2C_SMBUS_WRITE, reg, I2C_SMBUS_WORD_DATA, &data) ;
 }
+
 
 
 /*
@@ -229,8 +250,9 @@ int wiringPiI2CSetup (const int devId)
    device = "/dev/i2c-1" ;
   else if (rev == 3)
     device = "/dev/i2c-0"; // guenter fuer orange pi device = "/dev/i2c-2";
-else
-	device = "/dev/i2c-3" ;
+  else
+    return -1;
+	  //device = "/dev/i2c-3" ;
 
   return wiringPiI2CSetupInterface (device, devId) ;
 }

@@ -1,5 +1,5 @@
 /*
- * @Description: SPL1301 Éî¶È´«¸ĞÆ÷Çı¶¯³ÌĞò
+ * @Description: SPL1301 æ·±åº¦ä¼ æ„Ÿå™¨é©±åŠ¨ç¨‹åº
  */
 
 #define LOG_TAG "spl1301"
@@ -19,15 +19,15 @@ static spl1301_t spl1301_dev;
 static spl1301_t *spl1301 = &spl1301_dev;
 
 /**
- * @brief  »ñÈ¡ SPL1301 ³§¼ÒIDÓë°æ±¾ID
- * @retval ³§¼ÒID
+ * @brief  è·å– SPL1301 å‚å®¶IDä¸ç‰ˆæœ¬ID
+ * @retval å‚å®¶ID
  */
 int spl1301_get_id(int fd)
 {
     int8_t reg;
     reg = wiringPiI2CReadReg8(fd, PRODUCT_REVISION_ID);
 
-    // ÈôÎŞ·¨¶ÁÈ¡Êı¾İ£¬ÅĞ¶¨Îª ½ÓÈëµÄ²»ÊÇSPL1301£¬»òÎ´½ÓÈë
+    // è‹¥æ— æ³•è¯»å–æ•°æ®ï¼Œåˆ¤å®šä¸º æ¥å…¥çš„ä¸æ˜¯SPL1301ï¼Œæˆ–æœªæ¥å…¥
     if(reg < 0)
         return -1;
 
@@ -38,7 +38,7 @@ int spl1301_get_id(int fd)
 }
 
 /**
- * @brief ÉèÖÃ SPL1301 Ñ¹Á¦»òÎÂ¶È µÄ²ÉÑùÂÊºÍ¹ı²ÉÂÊ 
+ * @brief è®¾ç½® SPL1301 å‹åŠ›æˆ–æ¸©åº¦ çš„é‡‡æ ·ç‡å’Œè¿‡é‡‡ç‡ 
  * @param 
  *  uint8_t iSensor     0: Pressure;      1: Temperature 
  *  uint8_t u8SmplRate  sample rate(Hz)   Maximal = 128
@@ -144,7 +144,7 @@ void spl1301_rateset(int fd, uint8_t iSensor, uint8_t u8SmplRate, uint8_t u8Over
 }
 
 /**
- * @brief »ñÈ¡ spl1301 ÄÚ²¿³ö³§Ğ£×¼Êı¾İ£¬ÓÃÓÚºóĞøµÄÊı¾İ×ª»»
+ * @brief è·å– spl1301 å†…éƒ¨å‡ºå‚æ ¡å‡†æ•°æ®ï¼Œç”¨äºåç»­çš„æ•°æ®è½¬æ¢
  */
 void spl1301_get_calib_param(int fd)
 {
@@ -189,8 +189,8 @@ void spl1301_get_calib_param(int fd)
 
 
 /**
- * @brief Æô¶¯ spl1301 ÎÂ¶È²âÁ¿
- * @notice Èç¹ûÉèÖÃ spl1301 Ä£Ê½Î»Á¬Ğø²ÉÑù£¬Ôò¸Ãº¯Êı²»ĞèÒªÊ¹ÓÃ
+ * @brief å¯åŠ¨ spl1301 æ¸©åº¦æµ‹é‡
+ * @notice å¦‚æœè®¾ç½® spl1301 æ¨¡å¼ä½è¿ç»­é‡‡æ ·ï¼Œåˆ™è¯¥å‡½æ•°ä¸éœ€è¦ä½¿ç”¨
  */
 void spl1301_start_temperature(int fd)
 {
@@ -198,8 +198,8 @@ void spl1301_start_temperature(int fd)
 }
 
 /**
- * @brief Æô¶¯ SPL1301 Ñ¹Á¦²âÁ¿
- * @notice Èç¹ûÉèÖÃ SPL1301 Ä£Ê½Î»Á¬Ğø²ÉÑù£¬Ôò¸Ãº¯Êı²»ĞèÒªÊ¹ÓÃ
+ * @brief å¯åŠ¨ SPL1301 å‹åŠ›æµ‹é‡
+ * @notice å¦‚æœè®¾ç½® SPL1301 æ¨¡å¼ä½è¿ç»­é‡‡æ ·ï¼Œåˆ™è¯¥å‡½æ•°ä¸éœ€è¦ä½¿ç”¨
  */
 void spl1301_start_pressure(int fd)
 {
@@ -207,7 +207,7 @@ void spl1301_start_pressure(int fd)
 }
 
 /**
- * @brief  Ñ¡Ôñ´«¸ĞÆ÷ÎªÁ¬Ğø²âÁ¿Ä£Ê½
+ * @brief  é€‰æ‹©ä¼ æ„Ÿå™¨ä¸ºè¿ç»­æµ‹é‡æ¨¡å¼
  * @param 
  *  uint8_t mode  1: pressure; 2: temperature; 3: pressure and temperature  
  */
@@ -217,7 +217,7 @@ void spl1301_start_continuous(int fd, uint8_t mode)
 }
 
 /**
- * @brief  spl1301 Í£Ö¹×ª»»
+ * @brief  spl1301 åœæ­¢è½¬æ¢
  */
 void spl1301_stop(int fd)
 {
@@ -225,13 +225,13 @@ void spl1301_stop(int fd)
 }
 
 /**
- * @brief  »ñÈ¡Ô­Ê¼ÎÂ¶ÈÖµ£¬²¢½«Æä×ª»»Îª32Î»ÕûÊı
+ * @brief  è·å–åŸå§‹æ¸©åº¦å€¼ï¼Œå¹¶å°†å…¶è½¬æ¢ä¸º32ä½æ•´æ•°
  */
 void spl1301_get_raw_temp(int fd)
 {
     uint8_t h, m, l;
 
-    // ¸ßÎ»ÔÚÇ° (datasheet P17)
+    // é«˜ä½åœ¨å‰ (datasheet P17)
     h = wiringPiI2CReadReg8(fd, 0x03);
     m = wiringPiI2CReadReg8(fd, 0x04);
     l = wiringPiI2CReadReg8(fd, 0x05);
@@ -241,13 +241,13 @@ void spl1301_get_raw_temp(int fd)
 }
 
 /**
- * @brief  »ñÈ¡Ô­Ê¼Ñ¹Á¦Öµ£¬²¢½«Æä×ª»»Îª32Î»ÕûÊı
+ * @brief  è·å–åŸå§‹å‹åŠ›å€¼ï¼Œå¹¶å°†å…¶è½¬æ¢ä¸º32ä½æ•´æ•°
  */
 void spl1301_get_raw_pressure(int fd)
 {
     uint8_t h, m, l;
 
-    // ¸ßÎ»ÔÚÇ° (datasheet P17)
+    // é«˜ä½åœ¨å‰ (datasheet P17)
     h = wiringPiI2CReadReg8(fd, 0x00);
     m = wiringPiI2CReadReg8(fd, 0x01);
     l = wiringPiI2CReadReg8(fd, 0x02);
@@ -257,9 +257,9 @@ void spl1301_get_raw_pressure(int fd)
 }
 
 /**
- * @brief  ¸ù¾İÔ­Ê¼Êı¾İ·µ»ØĞ£×¼ºóµÄÎÂ¶ÈÖµ
+ * @brief  æ ¹æ®åŸå§‹æ•°æ®è¿”å›æ ¡å‡†åçš„æ¸©åº¦å€¼
  * 
- *  µ÷ÓÃ´Ëº¯ÊıÇ°ĞèÒªÏÈµ÷ÓÃ spl1301_get_raw_temp,»ñÈ¡Ô­Ê¼Êı¾İ
+ *  è°ƒç”¨æ­¤å‡½æ•°å‰éœ€è¦å…ˆè°ƒç”¨ spl1301_get_raw_temp,è·å–åŸå§‹æ•°æ®
  */
 float get_spl1301_temperature(void)
 {
@@ -272,9 +272,9 @@ float get_spl1301_temperature(void)
 }
 
 /**
- * @brief  ¸ù¾İÔ­Ê¼Êı¾İ·µ»ØĞ£×¼ºóµÄÆøÑ¹Öµ
+ * @brief  æ ¹æ®åŸå§‹æ•°æ®è¿”å›æ ¡å‡†åçš„æ°”å‹å€¼
  * 
- *  µ÷ÓÃ´Ëº¯ÊıÇ°ĞèÒªÏÈµ÷ÓÃ spl1301_get_raw_pressure,»ñÈ¡Ô­Ê¼Êı¾İ
+ *  è°ƒç”¨æ­¤å‡½æ•°å‰éœ€è¦å…ˆè°ƒç”¨ spl1301_get_raw_pressure,è·å–åŸå§‹æ•°æ®
  */
 float get_spl1301_pressure(void)
 {
@@ -293,28 +293,28 @@ float get_spl1301_pressure(void)
 
 //------------------------------------------------------------------------------------------------------------------
 //
-//	ÓÃÓÚ WiringPi functions
+//	ç”¨äº WiringPi functions
 //
 //------------------------------------------------------------------------------------------------------------------
 
 /**
-  * @brief  spl1301 ¸ù¾İÒı½Å×ª»»ÎªÍ¨µÀ»ñÈ¡ÏàÓ¦ÊıÖµ
+  * @brief  spl1301 æ ¹æ®å¼•è„šè½¬æ¢ä¸ºé€šé“è·å–ç›¸åº”æ•°å€¼
   */
 static int myDigitalRead(struct wiringPiNodeStruct *node, int pin)
 {
-    /* 0ÎªÑ¹Á¦Í¨µÀ£¬1ÎªÎÂ¶ÈÍ¨µÀ */
+    /* 0ä¸ºå‹åŠ›é€šé“ï¼Œ1ä¸ºæ¸©åº¦é€šé“ */
     int channel = pin - node->pinBase;
     int fd      = node->fd;
 
-    /* ÏÈ»ñÈ¡ÎÂ¶ÈÊı¾İ£¬ÎÂ¶È²¹³¥ */
+    /* å…ˆè·å–æ¸©åº¦æ•°æ®ï¼Œæ¸©åº¦è¡¥å¿ */
     spl1301_get_raw_temp(fd);
 
     if(PRESSURE_SENSOR == channel)
     {
-        /* ÏÈ»ñÈ¡Ô­Ê¼Êı¾İ */
+        /* å…ˆè·å–åŸå§‹æ•°æ® */
         spl1301_get_raw_pressure(fd);
-        // TODO ´Ë´¦ÊÇ·ñĞèÒªÑÓÊ±£¬´ı²âÊÔ
-        /* ÔÙ¸ù¾İÄÚ²¿ram¶¨±êÊı¾İ½øĞĞ×ª»» */
+        // TODO æ­¤å¤„æ˜¯å¦éœ€è¦å»¶æ—¶ï¼Œå¾…æµ‹è¯•
+        /* å†æ ¹æ®å†…éƒ¨ramå®šæ ‡æ•°æ®è¿›è¡Œè½¬æ¢ */
         return get_spl1301_pressure();
     }
     else if(TEMPERATURE_SENSOR == channel)
@@ -329,43 +329,43 @@ static int myDigitalRead(struct wiringPiNodeStruct *node, int pin)
 
 
 /**
- * @brief  ³õÊ¼»¯²¢ÉèÖÃ spl1301
+ * @brief  åˆå§‹åŒ–å¹¶è®¾ç½® spl1301
  * @param 
  *  int pinBase  pinBase > 64
  *
- * ×¢Òâ£¬¶ÁÈ¡µ½µÄÎª intĞÍ£¬Ê¹ÓÃÊ±ĞèÒªÇ¿ÖÆ×ª»»ÎªfloatĞÍ
+ * æ³¨æ„ï¼Œè¯»å–åˆ°çš„ä¸º intå‹ï¼Œä½¿ç”¨æ—¶éœ€è¦å¼ºåˆ¶è½¬æ¢ä¸ºfloatå‹
  */
 int spl1301Setup(const int pinBase)
 {
     static int fd;
-	struct wiringPiNodeStruct *node = NULL; // Ö¸Õë³õÊ¼»¯ÎªNULL£¬ÒÔÃâ²úÉú¶Î´íÎó
+	struct wiringPiNodeStruct *node = NULL; // æŒ‡é’ˆåˆå§‹åŒ–ä¸ºNULLï¼Œä»¥å…äº§ç”Ÿæ®µé”™è¯¯
     
-	// Ğ¡ÓÚ0´ú±íÎŞ·¨ÕÒµ½¸Ãi2c½Ó¿Ú£¬ÊäÈëÃüÁî sudo npi-config Ê¹ÄÜ¸Ãi2c½Ó¿Ú
+	// å°äº0ä»£è¡¨æ— æ³•æ‰¾åˆ°è¯¥i2cæ¥å£ï¼Œè¾“å…¥å‘½ä»¤ sudo npi-config ä½¿èƒ½è¯¥i2cæ¥å£
     fd = wiringPiI2CSetupInterface(SPL1301_I2C_DEV, SPL1301_I2C_ADDR);
     if (fd < 0)
         return -1;
 
-    /* ¼ì²âÊÇ·ñ´æÔÚ spl1301 Æ÷¼ş
-     * Ğ¡ÓÚ0´ú±í¶ÁÈ¡Ê§°Ü£¬´ú±í²»´æÔÚ¸Ã SPL1301 Æ÷¼ş£¬»òÕßÆ÷¼şµØÖ·´íÎó
+    /* æ£€æµ‹æ˜¯å¦å­˜åœ¨ spl1301 å™¨ä»¶
+     * å°äº0ä»£è¡¨è¯»å–å¤±è´¥ï¼Œä»£è¡¨ä¸å­˜åœ¨è¯¥ SPL1301 å™¨ä»¶ï¼Œæˆ–è€…å™¨ä»¶åœ°å€é”™è¯¯
     */
     if(spl1301_get_id(fd) < 0)
         return -2;
 
-    // »ñÈ¡³ö³§±ê¶¨²ÎÊı
+    // è·å–å‡ºå‚æ ‡å®šå‚æ•°
     spl1301_get_calib_param(fd);
-    // ²ÉÑùÂÊ = 32Hz; Pressure ³¬²ÉÑùÂÊ = 8;
+    // é‡‡æ ·ç‡ = 32Hz; Pressure è¶…é‡‡æ ·ç‡ = 8;
     spl1301_rateset(fd, PRESSURE_SENSOR, 32, 8);
-    // ²ÉÑùÂÊ = 1Hz; Temperature ³¬²ÉÑùÂÊ = 8;
+    // é‡‡æ ·ç‡ = 1Hz; Temperature è¶…é‡‡æ ·ç‡ = 8;
     spl1301_rateset(fd, TEMPERATURE_SENSOR, 32, 8);
-    /* ºóÌ¨Ä£Ê½(×Ô¶¯¿ªÆô×ª»» ÆøÑ¹ ¼° ÎÂ¶È)£¬¼´×Ô¶¯Á¬Ğø²âÁ¿Ä£Ê½ */
+    /* åå°æ¨¡å¼(è‡ªåŠ¨å¼€å¯è½¬æ¢ æ°”å‹ åŠ æ¸©åº¦)ï¼Œå³è‡ªåŠ¨è¿ç»­æµ‹é‡æ¨¡å¼ */
     spl1301_start_continuous(fd, CONTINUOUS_P_AND_T); 
 
-    // ´´½¨½Úµã¼ÓÈëÁ´±í£¬2¸öÍ¨µÀ£¬Ò»¸öÎªÑ¹Á¦Öµ£¬Ò»¸öÎªÎÂ¶ÈÖµ
+    // åˆ›å»ºèŠ‚ç‚¹åŠ å…¥é“¾è¡¨ï¼Œ2ä¸ªé€šé“ï¼Œä¸€ä¸ªä¸ºå‹åŠ›å€¼ï¼Œä¸€ä¸ªä¸ºæ¸©åº¦å€¼
     node = wiringPiNewNode(pinBase, 2);
 	if (!node)
         return -4;
 
-    // ×¢²á·½·¨
+    // æ³¨å†Œæ–¹æ³•
     node->fd          = fd;
     node->digitalRead = myDigitalRead;
 

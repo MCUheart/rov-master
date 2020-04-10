@@ -1,9 +1,9 @@
 /*
- * @Description: MS5837 Éî¶È´«¸ĞÆ÷Çı¶¯
+ * @Description: MS5837 æ·±åº¦ä¼ æ„Ÿå™¨é©±åŠ¨
  *
- *       Notes: Ë®Éî´«¸ĞÆ÷Éè±¸Çı¶¯
- *   Attention: SCL (ºÚÉ«)   
- *				SDA (»ÆÉ«)   
+ *       Notes: æ°´æ·±ä¼ æ„Ÿå™¨è®¾å¤‡é©±åŠ¨
+ *   Attention: SCL (é»‘è‰²)   
+ *				SDA (é»„è‰²)   
  */
 #define LOG_TAG "ms5837"
 
@@ -13,22 +13,25 @@
 #include <stdio.h>
 #include <math.h>
 #include <errno.h>
+#include <pthread.h>
 
 #include <wiringPi.h>
 #include <wiringPiI2C.h>
+
+static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static ms5837_t ms5837_dev;
 static ms5837_t *ms5837 = &ms5837_dev;
 
 /**
-  * @brief  crc4Ğ£Ñéº¯Êı (datasheet P12)
-  * @param  Êı×é
-  * @retval ·µ»Øcrc 4bitĞ£Ñé
+  * @brief  MS5837 PROMæ ¡å‡†å‚æ•°ï¼Œcrc4æ ¡éªŒå‡½æ•° (datasheet P12)
+  * @param  æ•°ç»„
+  * @retval è¿”å›crc 4bitæ ¡éªŒ
   */
 uint8_t ms5837_crc4(uint16_t *n_prom)
 {
 	int32_t  cnt;
-	uint32_t n_rem = 0; // crc ÓàÊı
+	uint32_t n_rem = 0; // crc ä½™æ•°
 	uint8_t  n_bit;
 
 	n_prom[0] = ((n_prom[0]) & 0x0FFF); // CRC byte is replaced by 0
@@ -53,7 +56,7 @@ uint8_t ms5837_crc4(uint16_t *n_prom)
 }
 
 /**
-  * @brief  ms5837 ¸´Î»
+  * @brief  ms5837 å¤ä½
   */
 int ms5837_reset(int fd)
 {
@@ -61,11 +64,11 @@ int ms5837_reset(int fd)
 }
 
 /**
-  * @brief  ms5837»ñÈ¡³ö³§±ê¶¨²ÎÊı
+  * @brief  ms5837è·å–å‡ºå‚æ ‡å®šå‚æ•°
   * @param  None
-  * @retval ·µ»Ø³ö³§±ê¶¨²ÎÊı crcĞ£Ñé ÊÇ·ñ³É¹¦±êÖ¾£º1³É¹¦£¬-1Ê§°Ü
-  *  Èô³É¹¦±íÊ¾Îªms5837´«¸ĞÆ÷
-  *  ÈôÊ§°Ü±íÊ¾ÎªÆäËûÀàĞÍ´«¸ĞÆ÷»òÎŞ
+  * @retval è¿”å›å‡ºå‚æ ‡å®šå‚æ•° crcæ ¡éªŒ æ˜¯å¦æˆåŠŸæ ‡å¿—ï¼š1æˆåŠŸï¼Œ-1å¤±è´¥
+  *  è‹¥æˆåŠŸè¡¨ç¤ºä¸ºms5837ä¼ æ„Ÿå™¨
+  *  è‹¥å¤±è´¥è¡¨ç¤ºä¸ºå…¶ä»–ç±»å‹ä¼ æ„Ÿå™¨æˆ–æ— 
   */
 int ms5837_get_calib_param(int fd)
 {	
@@ -73,38 +76,38 @@ int ms5837_get_calib_param(int fd)
 
 	for (i = 0; i <= 6; i++) 
 	{
-		// ¶ÁÈ¡promÖĞµÄ³ö³§±ê¶¨²ÎÊı
+		// è¯»å–promä¸­çš„å‡ºå‚æ ‡å®šå‚æ•°
     	ms5837->c[i] = \
 		wiringPiI2CReadReg16(fd, MS583703BA_PROM_RD + (i * 2));
 
-		/* ¸ß8Î» Óë µÍ8Î»»¥»»£¬ÓÉÓÚi2c¶ÁÈ¡ÏÈ¶ÁÈ¡ MSB */
+		/* é«˜8ä½ ä¸ ä½8ä½äº’æ¢ï¼Œç”±äºi2cè¯»å–å…ˆè¯»å– MSB */
 		ms5837->c[i] = (ms5837->c[i] << 8) | (ms5837->c[i] >> 8); 
 		//printf("param 0x%x\n",ms5837->c[i]);
 	}
 
-	/* crcĞ£ÑéÎª C[0]µÄ bit[15,12] */
+	/* crcæ ¡éªŒä¸º C[0]çš„ bit[15,12] */
 	ms5837->crc = (uint8_t)(ms5837->c[0] >> 12);
 	//printf("param crc:%x\n",ms5837->crc);
 
-	// ¹¤³§¶¨Òå²ÎÊıÎª c[0] µÄbit[14,0]
+	// å·¥å‚å®šä¹‰å‚æ•°ä¸º c[0] çš„bit[14,0]
 	ms5837->factory_id = (uint8_t)(ms5837->c[0] & 0x0fff);
 	/* 
-	 * crcĞ£ÑéÎªÓÃÓÚÅĞ¶Ï ms5837 ÊÇ·ñ³õÊ¼»¯³É¹¦ 
-	 * »òÕßËµÎªÁË¼ì²â½ÓÈëµÄÉè±¸ÊÇ·ñÊÇ ms5837´«¸ĞÆ÷
+	 * crcæ ¡éªŒä¸ºç”¨äºåˆ¤æ–­ ms5837 æ˜¯å¦åˆå§‹åŒ–æˆåŠŸ 
+	 * æˆ–è€…è¯´ä¸ºäº†æ£€æµ‹æ¥å…¥çš„è®¾å¤‡æ˜¯å¦æ˜¯ ms5837ä¼ æ„Ÿå™¨
 	*/
 	if(ms5837->crc == ms5837_crc4(ms5837->c))
-		return 1; // Ğ£Ñé³É¹¦£¬·µ»Ø1
+		return 1; // æ ¡éªŒæˆåŠŸï¼Œè¿”å›1
 
 	return -1;
 }
 
 
  /**
- * @brief  ms5837 »ñÈ¡×ª»»Êı¾İ
+ * @brief  ms5837 è·å–è½¬æ¢æ•°æ®
  * @param 
- *  uint8_t command  ´ø¾«¶ÈÎÂ¶ÈÃüÁî  ´ø¾«¶ÈÎÂ¶ÈÑ¹Á¦(¼ûÍ·ÎÄ¼ş)
+ *  uint8_t command  å¸¦ç²¾åº¦æ¸©åº¦å‘½ä»¤  å¸¦ç²¾åº¦æ¸©åº¦å‹åŠ›(è§å¤´æ–‡ä»¶)
  * @retval
- *  uint32_t Êı¾İ½á¹û
+ *  uint32_t æ•°æ®ç»“æœ
  */
 uint32_t ms5837_get_conversion(int fd, uint8_t command)
 {
@@ -112,11 +115,11 @@ uint32_t ms5837_get_conversion(int fd, uint8_t command)
 	uint8_t low;
 	uint32_t conversion;
 
-	// 1.ÏÈĞ´Èë×ª»»ÃüÁî(¼´Ö¸¶¨×ª»»´«¸ĞÆ÷¼°¾«¶È) (datasheet P11)
+	// 1.å…ˆå†™å…¥è½¬æ¢å‘½ä»¤(å³æŒ‡å®šè½¬æ¢ä¼ æ„Ÿå™¨åŠç²¾åº¦) (datasheet P11)
 	wiringPiI2CWrite(fd, command);
 
- 	/* 2.ÑÓÊ±µÈ´ı×ª»»Íê³É  
-	 * eg.¶ÁÈ¡8196¾«¶ÈÊ±£¬µÈ´ıÊ±¼ä±ØĞë´óÓÚ datasheet P2Ò³ÖĞµÄ18.08ºÁÃë£¬·ñÔòÎŞ·¨»ñÈ¡Êı¾İ
+ 	/* 2.å»¶æ—¶ç­‰å¾…è½¬æ¢å®Œæˆ  
+	 * eg.è¯»å–8196ç²¾åº¦æ—¶ï¼Œç­‰å¾…æ—¶é—´å¿…é¡»å¤§äº datasheet P2é¡µä¸­çš„18.08æ¯«ç§’ï¼Œå¦åˆ™æ— æ³•è·å–æ•°æ®
 	 */ 
 	delay(50);
 	//wiringPiI2CWrite(fd, MS583703BA_ADC_RD);
@@ -126,14 +129,19 @@ uint32_t ms5837_get_conversion(int fd, uint8_t command)
 	//printf("conversion 0x%x %d\n",conversion, conversion);
 	//conversion = (conversion << 8) | (conversion >> 8);
 	//printf("2 conversion: 0x%x %d\n",conversion, conversion);
-	// 3.ÔÚĞ´Èë ADC readÃüÁî
+	// 3.åœ¨å†™å…¥ ADC readå‘½ä»¤
+	pthread_mutex_lock(&mutex);
 	//wiringPiI2CWrite(fd, MS583703BA_ADC_RD);
 	wiringPiI2CReadRegBlock(fd, MS583703BA_ADC_RD, temp);
-	/*// 4.¶ÁÈ¡ 24bitµÄ×ª»»Êı¾İ ¸ßÎ»ÔÚÇ°
-	temp[0] = wiringPiI2CRead(fd); // bit 23-16
+	
+	// 4.è¯»å– 24bitçš„è½¬æ¢æ•°æ® é«˜ä½åœ¨å‰
+	/*temp[0] = wiringPiI2CRead(fd); // bit 23-16
 	temp[1] = wiringPiI2CRead(fd); // bit 8-15
 	temp[2] = wiringPiI2CRead(fd); // bit 0-7*/
-	//printf("temp: 0x%x 0x%x 0x%x\n",temp[0], temp[1],temp[2]);
+
+	pthread_mutex_unlock(&mutex);
+
+	printf("temp: 0x%x 0x%x 0x%x\n",temp[0], temp[1],temp[2]);
 
 	conversion = ((uint32_t)temp[0] <<16) | ((uint32_t)temp[1] <<8) | ((uint32_t)temp[2]);
 	//printf("2 conversion: 0x%x %d\n",conversion, conversion);
@@ -141,56 +149,56 @@ uint32_t ms5837_get_conversion(int fd, uint8_t command)
 }
 
 /**
- * @brief  »ñÈ¡²¢¼ÆËãÎÂ¶ÈÖµ
- *  ´ËÊ±µÄÎÂ¶ÈÖµ»¹Ã»¾­¹ı²¹³¥£¬²¢²»×¼È·
+ * @brief  è·å–å¹¶è®¡ç®—æ¸©åº¦å€¼
+ *  æ­¤æ—¶çš„æ¸©åº¦å€¼è¿˜æ²¡ç»è¿‡è¡¥å¿ï¼Œå¹¶ä¸å‡†ç¡®
  */
 void ms5837_cal_raw_temperature(int fd)
 {
-	// »ñÈ¡Ô­Ê¼ÎÂ¶ÈÊı×ÖÁ¿
+	// è·å–åŸå§‹æ¸©åº¦æ•°å­—é‡
 	ms5837->D2_Temp = ms5837_get_conversion(fd, MS583703BA_D2_OSR_2048);
-	// Êµ¼ÊÎÂ¶ÈÓë²Î¿¼ÎÂ¶ÈÖ®²î (¹«Ê½¼ûdatasheet P7)
+	// å®é™…æ¸©åº¦ä¸å‚è€ƒæ¸©åº¦ä¹‹å·® (å…¬å¼è§datasheet P7)
 	ms5837->dT = ms5837->D2_Temp - (((uint32_t)ms5837->c[5]) * 256);
-	// Êµ¼ÊµÄÎÂ¶È
-	ms5837->TEMP = 2000 + ms5837->dT * ((uint32_t)ms5837->c[6]) / 8388608; // 8388608 = 2^23,ÕâÀï²»²ÉÓÃÓÒÒÆ23Î»£¬ÒòÎª¸ÃÊı¾İÎªÓĞ·ûºÅ 
+	// å®é™…çš„æ¸©åº¦
+	ms5837->TEMP = 2000 + ms5837->dT * ((uint32_t)ms5837->c[6]) / 8388608; // 8388608 = 2^23,è¿™é‡Œä¸é‡‡ç”¨å³ç§»23ä½ï¼Œå› ä¸ºè¯¥æ•°æ®ä¸ºæœ‰ç¬¦å· 
 
 }
 
 /**
- * @brief  »ñÈ¡²¢¼ÆËãÑ¹Á¦Öµ
- *  ²¢½øĞĞÎÂ¶È²¹³¥
+ * @brief  è·å–å¹¶è®¡ç®—å‹åŠ›å€¼
+ *  å¹¶è¿›è¡Œæ¸©åº¦è¡¥å¿
  */
 void ms5837_cal_pressure(int fd)
 {
 	int64_t  Ti, OFFi, SENSi;
-	int32_t  dT_squ; // dTµÄ³Ë·½
+	int32_t  dT_squ; // dTçš„ä¹˜æ–¹
 	uint32_t temp_minus_squ, temp_plus_squ;
 
-	// »ñÈ¡Ô­Ê¼Ñ¹Á¦Êı×ÖÁ¿
+	// è·å–åŸå§‹å‹åŠ›æ•°å­—é‡
 	ms5837->D1_Pres= ms5837_get_conversion(fd, MS583703BA_D1_OSR_8192);
-	// Êµ¼ÊÎÂ¶ÈÆ«ÒÆ
+	// å®é™…æ¸©åº¦åç§»
 	ms5837->OFF  = (int64_t)ms5837->c[2] * 65536 + ((int64_t)ms5837->c[4] * ms5837->dT) / 128;
-	// Êµ¼ÊÎÂ¶ÈÁéÃô¶È
+	// å®é™…æ¸©åº¦çµæ•åº¦
 	ms5837->SENS = (int64_t)ms5837->c[1] * 32768 + ((int64_t)ms5837->c[3] * ms5837->dT) / 256;
 
-	dT_squ   = (ms5837->dT * ms5837->dT); // dTµÄ2´Î·½
-	temp_minus_squ = (2000 - ms5837->TEMP) * (2000 - ms5837->TEMP); // ÎÂ¶È²îµÄ2´Î·½
+	dT_squ   = (ms5837->dT * ms5837->dT); // dTçš„2æ¬¡æ–¹
+	temp_minus_squ = (2000 - ms5837->TEMP) * (2000 - ms5837->TEMP); // æ¸©åº¦å·®çš„2æ¬¡æ–¹
 
-	/* ¶ÔÎÂ¶ÈºÍÑ¹Á¦½øĞĞ¶ş½×ĞŞÕı (datasheet P8) */
-	if(ms5837->TEMP < 2000) // µÍÎÂÇé¿ö:µÍÓÚ20¡æÊ±
+	/* å¯¹æ¸©åº¦å’Œå‹åŠ›è¿›è¡ŒäºŒé˜¶ä¿®æ­£ (datasheet P8) */
+	if(ms5837->TEMP < 2000) // ä½æ¸©æƒ…å†µ:ä½äº20â„ƒæ—¶
 	{
-		/* TODO  ²âÊÔºó£º0x200000000 ¸ÄÎªÓÒÒÆ¶àÉÙbit£¬Ìá¸ßĞ§ÂÊ */
+		/* TODO  æµ‹è¯•åï¼š0x200000000 æ”¹ä¸ºå³ç§»å¤šå°‘bitï¼Œæé«˜æ•ˆç‡ */
 		Ti    = 3 * dT_squ / 0x200000000;
 		OFFi  = 3 * temp_minus_squ / 2;
 		SENSi = 5 * temp_minus_squ / 8;
 
-		if(ms5837->TEMP < -1500) // ³¬µÍÎÂÇé¿ö:µÍÓÚ-15¡æÊ±
+		if(ms5837->TEMP < -1500) // è¶…ä½æ¸©æƒ…å†µ:ä½äº-15â„ƒæ—¶
 		{
-			temp_plus_squ = (ms5837->TEMP + 1500) * (ms5837->TEMP + 1500); // ÎÂ¶ÈºÍµÄ2´Î·½
+			temp_plus_squ = (ms5837->TEMP + 1500) * (ms5837->TEMP + 1500); // æ¸©åº¦å’Œçš„2æ¬¡æ–¹
 			OFFi  += 7 * temp_plus_squ;
 			SENSi += 4 * temp_plus_squ;
 		}
 	}
-	else // ¸ßÎÂÇé¿ö:¸ßÓÚ20¡æÊ±
+	else // é«˜æ¸©æƒ…å†µ:é«˜äº20â„ƒæ—¶
 	{
 		Ti    = 2 * dT_squ / 0x2000000000;
 		OFFi  = 1 * temp_minus_squ / 16;
@@ -199,12 +207,12 @@ void ms5837_cal_pressure(int fd)
 	ms5837->OFF  -= OFFi;
 	ms5837->SENS -= SENSi;	
 
-	// ÎÂ¶È²¹³¥ºóµÄÑ¹Á¦Öµ
+	// æ¸©åº¦è¡¥å¿åçš„å‹åŠ›å€¼
 	ms5837->P = (ms5837->SENS / 0x200000 - ms5837->OFF) / 0x1000;
 
-	// Êµ¼ÊÎÂ¶ÈÖµ
+	// å®é™…æ¸©åº¦å€¼
 	ms5837->temperature = (ms5837->TEMP - Ti) / 100;
-	// Êµ¼ÊÑ¹Á¦Öµ
+	// å®é™…å‹åŠ›å€¼
 	ms5837->pressure = ms5837->P / 10;
 	//printf("temperature %.2f\n",ms5837->temperature);
 	//printf("pressure    %.2f\n",ms5837->pressure);
@@ -213,27 +221,27 @@ void ms5837_cal_pressure(int fd)
 
 //------------------------------------------------------------------------------------------------------------------
 //
-//	ÓÃÓÚ WiringPi functions
+//	ç”¨äº WiringPi functions
 //
 //------------------------------------------------------------------------------------------------------------------
 
 
 /**
-  * @brief  ms5837 ¸ù¾İÒı½Å×ª»»ÎªÍ¨µÀ»ñÈ¡ÏàÓ¦ÊıÖµ
+  * @brief  ms5837 æ ¹æ®å¼•è„šè½¬æ¢ä¸ºé€šé“è·å–ç›¸åº”æ•°å€¼
   */
 static int myDigitalRead(struct wiringPiNodeStruct *node, int pin)
 {
-    /* 0ÎªÑ¹Á¦Í¨µÀ£¬1ÎªÎÂ¶ÈÍ¨µÀ */
+    /* 0ä¸ºå‹åŠ›é€šé“ï¼Œ1ä¸ºæ¸©åº¦é€šé“ */
     int channel = pin - node->pinBase;
     int fd      = node->fd;
 
-    /* ÏÈ»ñÈ¡ÎÂ¶ÈÊı¾İ£¬ÒòÎªĞèÒª½øĞĞÎÂ¶È²¹³¥ 
-	 * ÔÚ¼ÆËãÑ¹Á¦º¯ÊıÖĞ£¬»á¼ÆËãÎÂ¶È¶ş½×£¬Ê¹µÃÎÂ¶È¸ü¼Ó×¼È·
-	 * Òò´Ë²»¹Ü»ñÈ¡Ñ¹Á¦»òÕßÎÂ¶È£¬¶¼Ó¦µ÷ÓÃÕâÒÔÏÂÁ½¸öº¯Êı
+    /* å…ˆè·å–æ¸©åº¦æ•°æ®ï¼Œå› ä¸ºéœ€è¦è¿›è¡Œæ¸©åº¦è¡¥å¿ 
+	 * åœ¨è®¡ç®—å‹åŠ›å‡½æ•°ä¸­ï¼Œä¼šè®¡ç®—æ¸©åº¦äºŒé˜¶ï¼Œä½¿å¾—æ¸©åº¦æ›´åŠ å‡†ç¡®
+	 * å› æ­¤ä¸ç®¡è·å–å‹åŠ›æˆ–è€…æ¸©åº¦ï¼Œéƒ½åº”è°ƒç”¨è¿™ä»¥ä¸‹ä¸¤ä¸ªå‡½æ•°
 	*/
 
-	// ÒòÎª³ÌĞòµ÷ÓÃÊ±£¬»áÏÈ»ñÈ¡Ñ¹Á¦Öµ£¬»ñÈ¡ÍêÑ¹Á¦Öµºó(¾­¹ı¶ş½×ĞŞÕı)£¬ÎÂ¶ÈÖµ²ÅÊÇ×¼È·µÄ
-	// Òò´Ë£¬»ñÈ¡ÎÂ¶ÈÊ±£¬²»ÔÙ½øĞĞÊı¾İ¼ÆËã£¬Ö±½Ó·µ»ØÎÂ¶ÈÊı¾İ£¬±ÜÃâÀË·Ñ¼ÆËã×ÊÔ´
+	// å› ä¸ºç¨‹åºè°ƒç”¨æ—¶ï¼Œä¼šå…ˆè·å–å‹åŠ›å€¼ï¼Œè·å–å®Œå‹åŠ›å€¼å(ç»è¿‡äºŒé˜¶ä¿®æ­£)ï¼Œæ¸©åº¦å€¼æ‰æ˜¯å‡†ç¡®çš„
+	// å› æ­¤ï¼Œè·å–æ¸©åº¦æ—¶ï¼Œä¸å†è¿›è¡Œæ•°æ®è®¡ç®—ï¼Œç›´æ¥è¿”å›æ¸©åº¦æ•°æ®ï¼Œé¿å…æµªè´¹è®¡ç®—èµ„æº
 	if(TEMPERATURE_SENSOR == channel)
     {
         return ms5837->temperature;
@@ -253,36 +261,36 @@ static int myDigitalRead(struct wiringPiNodeStruct *node, int pin)
 
 
 /**
- * @brief  ³õÊ¼»¯²¢ÉèÖÃ ms5837
+ * @brief  åˆå§‹åŒ–å¹¶è®¾ç½® ms5837
  * @param 
  *  int pinBase  pinBase > 64
  */
 int ms5837Setup(const int pinBase)
 {
     static int fd;
-	struct wiringPiNodeStruct *node = NULL; // Ö¸Õë³õÊ¼»¯ÎªNULL£¬ÒÔÃâ²úÉú¶Î´íÎó
+	struct wiringPiNodeStruct *node = NULL; // æŒ‡é’ˆåˆå§‹åŒ–ä¸ºNULLï¼Œä»¥å…äº§ç”Ÿæ®µé”™è¯¯
 
-	// Ğ¡ÓÚ0´ú±íÎŞ·¨ÕÒµ½¸Ãi2c½Ó¿Ú£¬ÊäÈëÃüÁî sudo npi-config Ê¹ÄÜ¸Ãi2c½Ó¿Ú
+	// å°äº0ä»£è¡¨æ— æ³•æ‰¾åˆ°è¯¥i2cæ¥å£ï¼Œè¾“å…¥å‘½ä»¤ sudo npi-config ä½¿èƒ½è¯¥i2cæ¥å£
     if ((fd = wiringPiI2CSetupInterface(MS5837_I2C_DEV, MS583703BA_I2C_ADDR)) < 0)
         return -1;
 
-    /* ¼ì²âÊÇ·ñ´æÔÚ ms5837 Æ÷¼ş
-     * Ğ´Èë¸´Î»£¬Èç¹ûĞ´ÈëÊ§°Ü£¬´ú±í²»´æÔÚ MS5837£¬»òÕßÆ÷¼şµØÖ·´íÎó
-	 * ¸´Î»µÄÄ¿µÄ£º¸´Î»²Å¿É¶ÁÈ¡Ğ£×¼Êı¾İ (datasheet P10) 
+    /* æ£€æµ‹æ˜¯å¦å­˜åœ¨ ms5837 å™¨ä»¶
+     * å†™å…¥å¤ä½ï¼Œå¦‚æœå†™å…¥å¤±è´¥ï¼Œä»£è¡¨ä¸å­˜åœ¨ MS5837ï¼Œæˆ–è€…å™¨ä»¶åœ°å€é”™è¯¯
+	 * å¤ä½çš„ç›®çš„ï¼šå¤ä½æ‰å¯è¯»å–æ ¡å‡†æ•°æ® (datasheet P10) 
     */
 	if(ms5837_reset(fd) < 0)
 		return -2;	     
 
-	/* »ñÈ¡Ğ£×¼²ÎÊı£¬Èô»ñÈ¡µÄÊı¾İCRCĞ£ÑéÊ§°Ü£¬ÔòÅĞ¶¨ ½ÓÈëµÄ²»ÊÇMS5837£¬»òÎ´½ÓÈëMS5837 */
+	/* è·å–æ ¡å‡†å‚æ•°ï¼Œè‹¥è·å–çš„æ•°æ®CRCæ ¡éªŒå¤±è´¥ï¼Œåˆ™åˆ¤å®š æ¥å…¥çš„ä¸æ˜¯MS5837ï¼Œæˆ–æœªæ¥å…¥MS5837 */
 	if(ms5837_get_calib_param(fd) < 0) 
 		return -3;
 
-    // ´´½¨½Úµã£¬2¸öÍ¨µÀ£¬Ò»¸öÎªÑ¹Á¦Öµ£¬Ò»¸öÎªÎÂ¶ÈÖµ
+    // åˆ›å»ºèŠ‚ç‚¹ï¼Œ2ä¸ªé€šé“ï¼Œä¸€ä¸ªä¸ºå‹åŠ›å€¼ï¼Œä¸€ä¸ªä¸ºæ¸©åº¦å€¼
     node = wiringPiNewNode(pinBase, 2);
 	if (!node)
         return -4;
 
-    // ×¢²á·½·¨
+    // æ³¨å†Œæ–¹æ³•
     node->fd          = fd;
     node->digitalRead = myDigitalRead;
 	

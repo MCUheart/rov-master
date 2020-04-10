@@ -1,5 +1,5 @@
 /*
- * @Description: SPL1301 Éî¶È´«¸ĞÆ÷Çı¶¯³ÌĞò
+ * @Description: SPL1301 æ·±åº¦ä¼ æ„Ÿå™¨é©±åŠ¨ç¨‹åº
  */
 
 #ifndef SPL1301_H
@@ -7,18 +7,18 @@
 
 #include "../user/DataType.h"
 
-#define SPL1301_I2C_DEV  "/dev/i2c-1"  // SPL1301 Ê¹ÓÃµÄ I2CÉè±¸
-#define SPL1301_I2C_ADDR 0x77          // SPL1301 I2C µØÖ· (datasheet P9)
+#define SPL1301_I2C_DEV  "/dev/i2c-1"  // SPL1301 ä½¿ç”¨çš„ I2Cè®¾å¤‡
+#define SPL1301_I2C_ADDR 0x77          // SPL1301 I2C åœ°å€ (datasheet P9)
 
-/* ²úÆ·Óë°æ±¾ID ¼Ä´æÆ÷µØÖ· */
+/* äº§å“ä¸ç‰ˆæœ¬ID å¯„å­˜å™¨åœ°å€ */
 #define PRODUCT_REVISION_ID 0x0D
 
-/* ÃüÁî */
+/* å‘½ä»¤ */
 #define CONTINUOUS_PRESSURE 1
 #define CONTINUOUS_TEMPERATURE 2
 #define CONTINUOUS_P_AND_T 3
 
-/* ´«¸ĞÆ÷±êºÅ */
+/* ä¼ æ„Ÿå™¨æ ‡å· */
 #define PRESSURE_SENSOR 0
 #define TEMPERATURE_SENSOR 1
 
@@ -33,42 +33,42 @@ typedef struct
     int16_t c20;
     int16_t c21;
     int16_t c30;
-}spl1301_calib_param_t; // spl1301 ³ö³§Ğ£×¼²ÎÊı
+}spl1301_calib_param_t; // spl1301 å‡ºå‚æ ¡å‡†å‚æ•°
 
 typedef struct
 {
     spl1301_calib_param_t calib_param; /* calibration data */
-    int8_t product_id;  // ²úÆ·ID     
-    int8_t revision_id; // ĞŞ¶©ID   
+    int8_t product_id;  // äº§å“ID     
+    int8_t revision_id; // ä¿®è®¢ID   
 
-    int32_t i32rawPressure;    // Ô­Ê¼Ñ¹Á¦Öµ
-    int32_t i32rawTemperature; // Ô­Ê¼ÎÂ¶ÈÖµ
-    int32_t i32kP; // Ñ¹Á¦ÏµÊı
-    int32_t i32kT; // ÎÂ¶ÈÏµÊı
+    int32_t i32rawPressure;    // åŸå§‹å‹åŠ›å€¼
+    int32_t i32rawTemperature; // åŸå§‹æ¸©åº¦å€¼
+    int32_t i32kP; // å‹åŠ›ç³»æ•°
+    int32_t i32kT; // æ¸©åº¦ç³»æ•°
 
-    float pressure;    // Êµ¼ÊÑ¹Á¦Öµ
-    float temperature; // Êµ¼ÊÎÂ¶ÈÖµ
+    float pressure;    // å®é™…å‹åŠ›å€¼
+    float temperature; // å®é™…æ¸©åº¦å€¼
 }spl1301_t; 
 
-//³õÊ¼»¯µ÷ÓÃ
+// SPL1301 åˆå§‹åŒ–
 int spl1301Setup(const int pinBase);
-// »ñÈ¡³§¼ÒIDÓë°æ±¾ID
+// è·å–å‚å®¶IDä¸ç‰ˆæœ¬ID
 int spl1301_get_id(int fd);
-//ÉèÖÃÌØ¶¨´«¸ĞÆ÷µÄ²ÉÑùÂÊºÍÃ¿Ãë¹ı²ÉÑùÂÊ
+// è®¾ç½®ç‰¹å®šä¼ æ„Ÿå™¨çš„é‡‡æ ·ç‡å’Œæ¯ç§’è¿‡é‡‡æ ·ç‡
 void spl1301_rateset(int fd, uint8_t iSensor, uint8_t u8SmplRate, uint8_t u8OverSmpl);
-//¿ªÊ¼Ò»´ÎÎÂ¶È²âÁ¿
+// å¼€å§‹ä¸€æ¬¡æ¸©åº¦æµ‹é‡
 void spl1301_start_temperature(int fd);
-//¿ªÊ¼Ò»´ÎÑ¹Á¦²âÁ¿
+// å¼€å§‹ä¸€æ¬¡å‹åŠ›æµ‹é‡
 void spl1301_start_pressure(int fd);
-//Ñ¡ÔñÁ¬Ğø²âÁ¿Ä£Ê½
+// é€‰æ‹©è¿ç»­æµ‹é‡æ¨¡å¼
 void spl1301_start_continuous(int fd, uint8_t mode);
-// »ñÈ¡Ô­Ê¼ÎÂ¶ÈÖµ²¢½«Æä×ª»»Îª32Î»ÕûÊı
+// è·å–åŸå§‹æ¸©åº¦å€¼å¹¶å°†å…¶è½¬æ¢ä¸º32ä½æ•´æ•°
 void spl1301_get_raw_temp(int fd);
-//µ÷ÓÃ¸Ã¾ä×ª»»Êı¾İ,»ñÈ¡Ô­Ê¼Ñ¹Á¦Öµ²¢½«Æä×ª»»Îª32Î»ÕûÊı
+// è°ƒç”¨è¯¥å¥è½¬æ¢æ•°æ®,è·å–åŸå§‹å‹åŠ›å€¼å¹¶å°†å…¶è½¬æ¢ä¸º32ä½æ•´æ•°
 void spl1301_get_raw_pressure(int fd);
-//¸ù¾İÔ­Ê¼Öµ·µ»ØĞ£×¼ÎÂ¶ÈÖµ¡£
+// æ ¹æ®åŸå§‹å€¼è¿”å›æ ¡å‡†æ¸©åº¦å€¼
 float get_spl1301_temperature(void);
-//¸ù¾İÔ­Öµ·µ»ØĞ£×¼Ñ¹Á¦Öµ¡£
+// æ ¹æ®åŸå€¼è¿”å›æ ¡å‡†å‹åŠ›å€¼
 float get_spl1301_pressure(void);
 
 #endif

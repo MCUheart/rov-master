@@ -12,7 +12,6 @@
 #include "sys_status.h"
 
 #include <elog.h>
-#include <string.h>
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
@@ -22,6 +21,14 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+
+#include <netdb.h>
+#include <net/if.h>
+#include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
 
 #define TEMP_PATH "/sys/class/thermal/thermal_zone0/temp"
 
@@ -220,11 +227,11 @@ void get_net_data(netData_t *net_data, char *eth)
  */
 float get_net_speed(char *eth)
 {
+    char ethc[20];
     float netspeed;
-	char ethc[20];
     netData_t nd1, nd2;
 
-    sprintf(ethc, "%s:", eth); // 加上:
+    sprintf(ethc, "%s:", eth); // 在网卡名后加上 冒号“:”
 
 	get_net_data(&nd1, ethc);
 	sleep(1);
@@ -233,4 +240,21 @@ float get_net_speed(char *eth)
 	netspeed = (float)((nd2.rb + nd2.tb) - (nd1.rb + nd1.tb)) / 1024 * 8; // 转换为 kbps
 
 	return netspeed;
+}
+
+/**
+  * @brief  获取对应网卡的IP地址
+  * @param  eth_name:网卡名   ip:数组首地址
+  */
+void get_localip(const char *eth_name, char *ip)
+{
+    struct ifreq ifr;
+    static int sever_sock = -1;
+
+	if (eth_name == NULL)
+		return;
+
+    strcpy(ifr.ifr_name, eth_name);
+    if (!(ioctl(sever_sock, SIOCGIFADDR, &ifr)))
+        strcpy(ip, inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr));
 }

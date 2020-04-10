@@ -3,15 +3,15 @@
 
 #include "../user/DataType.h"
 
-#define MS5837_I2C_DEV  "/dev/i2c-1"  // MS5837 Ê¹ÓÃµÄ I2CÉè±¸
+#define MS5837_I2C_DEV  "/dev/i2c-1"  // MS5837 ä½¿ç”¨çš„ I2Cè®¾å¤‡
 /* MS5837-30BA address is 1110110x (write: x=0, read: x=1). */
-#define MS583703BA_I2C_ADDR         0x76  // MS5387 I2C µØÖ· (datasheet P9)
+#define MS583703BA_I2C_ADDR         0x76  // MS5387 I2C åœ°å€ (datasheet P9)
 
 #define MS583703BA_RESET            0x1E
 #define MS583703BA_ADC_RD           0x00
 #define	MS583703BA_PROM_RD          0xA0
 
-/* ×ª»»ÃüÁî£ºÑ¹Á¦ (datasheet P9) */
+/* è½¬æ¢å‘½ä»¤ï¼šå‹åŠ› (datasheet P9) */
 #define MS583703BA_D1_OSR_256	    0x40
 #define MS583703BA_D1_OSR_512		0x42
 #define MS583703BA_D1_OSR_1024		0x44
@@ -19,7 +19,7 @@
 #define MS583703BA_D1_OSR_4096		0x48
 #define	MS583703BA_D1_OSR_8192   	0x4A
 
-/* ×ª»»ÃüÁî£ºÎÂ¶È (datasheet P9) */
+/* è½¬æ¢å‘½ä»¤ï¼šæ¸©åº¦ (datasheet P9) */
 #define MS583703BA_D2_OSR_256		0x50
 #define MS583703BA_D2_OSR_512		0x52
 #define MS583703BA_D2_OSR_1024		0x54
@@ -28,43 +28,44 @@
 #define	MS583703BA_D2_OSR_8192   	0x5A
 
 
-/* ´«¸ĞÆ÷±êºÅ */
+/* ä¼ æ„Ÿå™¨æ ‡å· */
 #define PRESSURE_SENSOR 0
 #define TEMPERATURE_SENSOR 1
 
 
 typedef struct
 {
-    /** ³ö³§Ğ£×¼²ÎÊı calib_param[7] (datasheet P12)
+    /** å‡ºå‚æ ¡å‡†å‚æ•° calib_param[7] (datasheet P12)
     *
-    * C0    CRCĞ£Ñé bit[15,12]  ¹¤³§²ÎÊıbit[11,0] 
-    * C1    Ñ¹Á¦ÁéÃô¶È SENS|T1
-    * C2    Ñ¹Á¦²¹³¥   OFF|T1
-    * C3	ÎÂ¶ÈÑ¹Á¦ÁéÃô¶ÈÏµÊı TCS
-    * C4	ÎÂ¶ÈÏµÊıµÄÑ¹Á¦²¹³¥ TCO
-    * C5	²Î¿¼ÎÂ¶È T|REF
-    * C6 	ÎÂ¶ÈÏµÊıµÄÎÂ¶È TEMPSENS
+    * C0    CRCæ ¡éªŒ bit[15,12]  å·¥å‚å‚æ•°bit[11,0] 
+    * C1    å‹åŠ›çµæ•åº¦ SENS|T1
+    * C2    å‹åŠ›è¡¥å¿   OFF|T1
+    * C3	æ¸©åº¦å‹åŠ›çµæ•åº¦ç³»æ•° TCS
+    * C4	æ¸©åº¦ç³»æ•°çš„å‹åŠ›è¡¥å¿ TCO
+    * C5	å‚è€ƒæ¸©åº¦ T|REF
+    * C6 	æ¸©åº¦ç³»æ•°çš„æ¸©åº¦ TEMPSENS
     */
-    uint16_t c[7];      // promÖĞµÄ³ö³§Ğ£×¼²ÎÊı calib_param[7]
-    uint8_t crc;        // crcĞ£Ñé
-    uint8_t factory_id; // ³ö³§²ÎÊı (Îª c[0]µÄÇ°12bit) 
+    uint16_t c[7];      // promä¸­çš„å‡ºå‚æ ¡å‡†å‚æ•° calib_param[7]
+    uint8_t crc;        // crcæ ¡éªŒ
+    uint8_t factory_id; // å‡ºå‚å‚æ•° (ä¸º c[0]çš„å‰12bit) 
 
-    uint32_t D1_Pres; // Ô­Ê¼Ñ¹Á¦Êı×ÖÁ¿
-    uint32_t D2_Temp; // Ô­Ê¼ÎÂ¶ÈÊı×ÖÁ¿
+    uint32_t D1_Pres; // åŸå§‹å‹åŠ›æ•°å­—é‡
+    uint32_t D2_Temp; // åŸå§‹æ¸©åº¦æ•°å­—é‡
 
-    int32_t dT;   // Êµ¼ÊÎÂ¶ÈÓë²Î¿¼ÎÂ¶ÈÖ®²î
-    int32_t TEMP; // Êµ¼ÊµÄÎÂ¶È
+    int32_t dT;   // å®é™…æ¸©åº¦ä¸å‚è€ƒæ¸©åº¦ä¹‹å·®
+    int32_t TEMP; // å®é™…çš„æ¸©åº¦
 
-    int64_t OFF;  // Êµ¼ÊÎÂ¶ÈÆ«ÒÆ
-    int64_t SENS; // Êµ¼ÊÎÂ¶ÈÁéÃô¶È
-    int32_t P;    // ÎÂ¶È²¹³¥µÄÑ¹Á¦
+    int64_t OFF;  // å®é™…æ¸©åº¦åç§»
+    int64_t SENS; // å®é™…æ¸©åº¦çµæ•åº¦
+    int32_t P;    // æ¸©åº¦è¡¥å¿çš„å‹åŠ›
 
-    float pressure;    // Êµ¼ÊÑ¹Á¦Öµ
-    float temperature; // Êµ¼ÊÎÂ¶ÈÖµ
+    float pressure;    // å®é™…å‹åŠ›å€¼
+    float temperature; // å®é™…æ¸©åº¦å€¼
 
-}ms5837_t; /* ´æ·Åms5837Ïà¹Ø²ÎÊı */
+}ms5837_t; /* å­˜æ”¾ms5837ç›¸å…³å‚æ•° */
 
 
+// MS5837åˆå§‹åŒ–
 int ms5837Setup(const int pinBase);
 
 

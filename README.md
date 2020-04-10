@@ -20,8 +20,8 @@
 # 2. 使用
 - 运行环境：NanoPi NEO
 ```shell
-$ git clone https://github.com/zengwangfa/rovmaster
-$ cd rovmaster
+$ git clone https://github.com/zengwangfa/rov-master
+$ cd rov-master
 ```
 
 ## 2.1 安装相关依赖

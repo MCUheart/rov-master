@@ -50,7 +50,6 @@ typedef struct
 } disk_t;
 
 
-
 /* CPU 状态 */
 typedef struct
 {
@@ -76,15 +75,20 @@ typedef struct
 
 }system_status_t;
 
+// 获取 CPU 温度
+float get_cpu_temp(void); 
+// 获取 1s 内的 CPU 使用率
+float get_cpu_usage(void);
 
-float get_cpu_temp(void); // 获取 CPU 温度
-float get_cpu_usage(void);// 获取 1s 内的 cpu 使用率
-
+// 获取 硬盘状态
 void get_disk_status(disk_t *disk);	
-void get_memory_status(memory_t *memory); // 获取 内存情况
+// 获取 内存状态
+void get_memory_status(memory_t *memory); 
 
+// 获取对应网卡网速
 float get_net_speed(char *eth);
+// 获取对应网卡IP地址
+void get_localip(const char *eth_name, char *ip);
 
 
-
-#endif /* _DRV_CPU_TEMP_H_ */
+#endif /* _SYS_STATUS_H_ */

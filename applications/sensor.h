@@ -30,5 +30,5 @@ typedef struct
 // 传感器线程初始化
 int sensor_thread_init(void);
 
-
+extern Sensor_Type Sensor;
 #endif

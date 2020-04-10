@@ -1,5 +1,5 @@
  /*
- * @Description: JY901 ¾ÅÖáÊı¾İ½âÎö³ÌĞò
+ * @Description: JY901 ä¹è½´æ•°æ®è§£æç¨‹åº
  */
 
 #define LOG_TAG "jy901"
@@ -19,49 +19,49 @@
 static jy901_t jy901_dev;
 static jy901_t *jy901 = &jy901_dev;
 
-short Compass_Offset_Angle = 0;//Ö¸ÄÏÕë²¹³¥½Ç¶È   ÓÉÓÚÊÜµ½°å×Ó´Å³¡¸ÉÈÅ£¬ĞèÒª¼ÓÒ»¸ö²¹³¥½Ç¶È  -360 ~ +360
+short Compass_Offset_Angle = 0;//æŒ‡å—é’ˆè¡¥å¿è§’åº¦   ç”±äºå—åˆ°æ¿å­ç£åœºå¹²æ‰°ï¼Œéœ€è¦åŠ ä¸€ä¸ªè¡¥å¿è§’åº¦  -360 ~ +360
 extern Sensor_Type Sensor;
 
-// º¯ÊıÉùÃ÷
+// å‡½æ•°å£°æ˜
 void jy901_convert(JY901_Type *pArr);
 
 
 /**
-  * @brief  copeJY901_dataÎª´®¿ÚÖĞ¶Ïµ÷ÓÃº¯Êı£¬´®¿ÚÃ¿ÊÕµ½Ò»¸öÊı¾İ£¬µ÷ÓÃÒ»´ÎÕâ¸öº¯Êı
-  *         ÅĞ¶ÏÊı¾İÊÇÄÄÖÖÊı¾İ£¬È»ºó½«Æä¿½±´µ½¶ÔÓ¦µÄ½á¹¹ÌåÖĞ
+  * @brief  copeJY901_dataä¸ºä¸²å£ä¸­æ–­è°ƒç”¨å‡½æ•°ï¼Œä¸²å£æ¯æ”¶åˆ°ä¸€ä¸ªæ•°æ®ï¼Œè°ƒç”¨ä¸€æ¬¡è¿™ä¸ªå‡½æ•°
+  *         åˆ¤æ–­æ•°æ®æ˜¯å“ªç§æ•°æ®ï¼Œç„¶åå°†å…¶æ‹·è´åˆ°å¯¹åº”çš„ç»“æ„ä½“ä¸­
   */ 
 void copeJY901_data(uint8_t Data)
 {
-	static uint8_t rxBuffer[20] = {0}; // Êı¾İ°ü
-	static uint8_t rxCheck = 0;		 // Î²Ğ£Ñé×Ö
-	static uint8_t rxCount = 0;		 // ½ÓÊÕ¼ÆÊı
-	static uint8_t i = 0;				 // ½ÓÊÕ¼ÆÊı
+	static uint8_t rxBuffer[20] = {0}; // æ•°æ®åŒ…
+	static uint8_t rxCheck = 0;		 // å°¾æ ¡éªŒå­—
+	static uint8_t rxCount = 0;		 // æ¥æ”¶è®¡æ•°
+	static uint8_t i = 0;				 // æ¥æ”¶è®¡æ•°
 
-	rxBuffer[rxCount++] = Data; // ½«ÊÕµ½µÄÊı¾İ´æÈë»º³åÇøÖĞ
+	rxBuffer[rxCount++] = Data; // å°†æ”¶åˆ°çš„æ•°æ®å­˜å…¥ç¼“å†²åŒºä¸­
 
 	if (rxBuffer[0] != 0x55)
 	{
-		// Êı¾İÍ·²»¶Ô£¬ÔòÖØĞÂ¿ªÊ¼Ñ°ÕÒ0x55Êı¾İÍ·
-		rxCount = 0; // Çå¿Õ»º´æÇø
+		// æ•°æ®å¤´ä¸å¯¹ï¼Œåˆ™é‡æ–°å¼€å§‹å¯»æ‰¾0x55æ•°æ®å¤´
+		rxCount = 0; // æ¸…ç©ºç¼“å­˜åŒº
 		return;
 	}
 	if (rxCount < JY901_PACKET_LENGTH)
 	{
 		return;
-	} // Êı¾İ²»Âú11¸ö£¬Ôò·µ»Ø
+	} // æ•°æ®ä¸æ»¡11ä¸ªï¼Œåˆ™è¿”å›
 
-	/*********** Ö»ÓĞ½ÓÊÕÂú11¸ö×Ö½ÚÊı¾İ ²Å»á½øÈëÒÔÏÂ³ÌĞò ************/
+	/*********** åªæœ‰æ¥æ”¶æ»¡11ä¸ªå­—èŠ‚æ•°æ® æ‰ä¼šè¿›å…¥ä»¥ä¸‹ç¨‹åº ************/
 	for (i = 0; i < 10; i++)
 	{
-		rxCheck += rxBuffer[i]; //Ğ£ÑéÎ»ÀÛ¼Ó
+		rxCheck += rxBuffer[i]; //æ ¡éªŒä½ç´¯åŠ 
 	}
 
-	if (rxCheck == rxBuffer[JY901_PACKET_LENGTH - 1]) // ÅĞ¶ÏÊı¾İ°üĞ£ÑéÊÇ·ñÕıÈ·
+	if (rxCheck == rxBuffer[JY901_PACKET_LENGTH - 1]) // åˆ¤æ–­æ•°æ®åŒ…æ ¡éªŒæ˜¯å¦æ­£ç¡®
 	{
-		// ÅĞ¶ÏÊı¾İÊÇÄÄÖÖÊı¾İ£¬È»ºó½«Æä¿½±´µ½¶ÔÓ¦µÄ½á¹¹ÌåÖĞ£¬ÓĞĞ©Êı¾İ°üĞèÒªÍ¨¹ıÉÏÎ»»ú´ò¿ª¶ÔÓ¦µÄÊä³öºó£¬²ÅÄÜ½ÓÊÕµ½Õâ¸öÊı¾İ°üµÄÊı¾İ
+		// åˆ¤æ–­æ•°æ®æ˜¯å“ªç§æ•°æ®ï¼Œç„¶åå°†å…¶æ‹·è´åˆ°å¯¹åº”çš„ç»“æ„ä½“ä¸­ï¼Œæœ‰äº›æ•°æ®åŒ…éœ€è¦é€šè¿‡ä¸Šä½æœºæ‰“å¼€å¯¹åº”çš„è¾“å‡ºåï¼Œæ‰èƒ½æ¥æ”¶åˆ°è¿™ä¸ªæ•°æ®åŒ…çš„æ•°æ®
 		switch (rxBuffer[1])
 		{
-			case 0x50:	memcpy(&jy901->stcTime,    &rxBuffer[2],8);break; // ¿½±´ÉáÈ¥ °üÍ·ÓëÊı¾İ¸öÊıÎ»
+			case 0x50:	memcpy(&jy901->stcTime,    &rxBuffer[2],8);break; // æ‹·è´èˆå» åŒ…å¤´ä¸æ•°æ®ä¸ªæ•°ä½
 			case 0x51:	memcpy(&jy901->stcAcc,     &rxBuffer[2],8);break;
 			case 0x52:	memcpy(&jy901->stcGyro,    &rxBuffer[2],8);break;
 			case 0x53:	memcpy(&jy901->stcAngle,   &rxBuffer[2],8);break;
@@ -72,20 +72,20 @@ void copeJY901_data(uint8_t Data)
 			case 0x58:	memcpy(&jy901->stcGPSV,    &rxBuffer[2],8);break;
 			case 0x59:	memcpy(&jy901->stcQ,       &rxBuffer[2],8);break;
 		}
-		rxCount = 0; // Çå¿Õ»º´æÇø
-		rxCheck = 0; // Ğ£ÑéÎ»ÇåÁã
+		rxCount = 0; // æ¸…ç©ºç¼“å­˜åŒº
+		rxCheck = 0; // æ ¡éªŒä½æ¸…é›¶
 
-		jy901_convert(&Sensor.JY901); // JY901Êı¾İ×ª»»
+		//jy901_convert(&Sensor.JY901); // JY901æ•°æ®è½¬æ¢
 	}
-	else // ´íÎóÇåÁã
+	else // é”™è¯¯æ¸…é›¶
 	{
-		rxCount = 0; // Çå¿Õ»º´æÇø
-		rxCheck = 0; // Ğ£ÑéÎ»ÇåÁã
+		rxCount = 0; // æ¸…ç©ºç¼“å­˜åŒº
+		rxCheck = 0; // æ ¡éªŒä½æ¸…é›¶
 		return;
 	}
 }
-
-// Sensor.JY901 Êı¾İ×ª»»
+/*
+// Sensor.JY901 æ•°æ®è½¬æ¢
 void jy901_convert(JY901_Type *pArr)
 {
 	pArr->Acc.x = (float)jy901->stcAcc.a[0] / 2048; // 32768*16
@@ -100,15 +100,15 @@ void jy901_convert(JY901_Type *pArr)
 	pArr->Euler.Pitch = (float)jy901->stcAngle.angle[1] / 8192 * 45;
 	pArr->Euler.Yaw = (float)jy901->stcAngle.angle[2] / 8192 * 45;
 
-	// Æ«ÒÆ½Ç¶È µÈÓÚµ±Ö¸Ïò Õı±±Ê±µÄ½Ç¶È(-360 ~ +360 )
-	if (Compass_Offset_Angle != 0) // Èç¹ûÎ´ÉèÖÃ²¹³¥½Ç¶È£¬Ôò²»½øĞĞ½Ç¶È²¹³¥¡¾²¹³¥Îª Õı½Ç¶È¡¿
+	// åç§»è§’åº¦ ç­‰äºå½“æŒ‡å‘ æ­£åŒ—æ—¶çš„è§’åº¦(-360 ~ +360 )
+	if (Compass_Offset_Angle != 0) // å¦‚æœæœªè®¾ç½®è¡¥å¿è§’åº¦ï¼Œåˆ™ä¸è¿›è¡Œè§’åº¦è¡¥å¿ã€è¡¥å¿ä¸º æ­£è§’åº¦ã€‘
 	{
-		pArr->Euler.Yaw -= Compass_Offset_Angle; // ¼õÈ¥²¹³¥½Ç¶È
+		pArr->Euler.Yaw -= Compass_Offset_Angle; // å‡å»è¡¥å¿è§’åº¦
 		if (pArr->Euler.Yaw < -180){
-			pArr->Euler.Yaw += 360; // ½Ç¶È·´Ïò²¹³¥
+			pArr->Euler.Yaw += 360; // è§’åº¦åå‘è¡¥å¿
 		}
 		if (pArr->Euler.Yaw > 180){
-			pArr->Euler.Yaw -= 360; // ½Ç¶È·´Ïò²¹³¥
+			pArr->Euler.Yaw -= 360; // è§’åº¦åå‘è¡¥å¿
 		}
 	}
 
@@ -118,15 +118,16 @@ void jy901_convert(JY901_Type *pArr)
 
 	pArr->Temperature = (float)jy901->stcAcc.T / 100;
 }
+*/
 
 
 /**
-  * @brief  ´ò¿ª¶ÔÓ¦ JY901 ´®¿ÚÉè±¸
+  * @brief  æ‰“å¼€å¯¹åº” JY901 ä¸²å£è®¾å¤‡
   */
 int jy901Setup(void)
 {
 	static int fd;
-	// Ğ¡ÓÚ0´ú±íÎŞ·¨ÕÒµ½¸Ãuart½Ó¿Ú£¬ÊäÈëÃüÁî sudo npi-config Ê¹ÄÜ¸Ãuart½Ó¿Ú
+	// å°äº0ä»£è¡¨æ— æ³•æ‰¾åˆ°è¯¥uartæ¥å£ï¼Œè¾“å…¥å‘½ä»¤ sudo npi-config ä½¿èƒ½è¯¥uartæ¥å£
 	fd = serialOpen(JY901_UART_DEV, JY901_UART_BAUD);
 	if (fd < 0)
 		return -1;

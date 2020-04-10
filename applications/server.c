@@ -4,10 +4,11 @@
 
 #define LOG_TAG "server"
 
-#include <elog.h>
+#include "../drivers/sys_status.h"
 #include "server.h"
 #include "data.h"
 
+#include <elog.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -35,25 +36,7 @@ static uint8_t recv_buff[RECV_DATA_LEN] = {0};
 static uint8_t return_data[RETURN_DATA_LEN] = {0xAA, 0x55, 0x16};
 
 
-/**
-  * @brief  获取对应网卡的IP地址
-  * @param  eth_name:网卡名   ip:数组首地址
-  */
-void get_localip(const char *eth_name, char *ip)
-{
-    struct ifreq ifr;
 
-	if (eth_name == NULL)
-	{
-		return;
-	}
-
-    strcpy(ifr.ifr_name, eth_name);
-    if (!(ioctl(sever_sock, SIOCGIFADDR, &ifr)))
-    {
-        strcpy(ip, inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr));
-    }
-}
 
 
 

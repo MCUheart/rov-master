@@ -16,19 +16,23 @@
 #include <stdlib.h>
 	
 
-void get_rocker_params(rockerInfo_t *rc, cmd_t *cmd) // 获取摇杆参数值
+void fourAixs_get_rocker_params(rockerInfo_t *rc, cmd_t *cmd) // 获取摇杆参数值
 {
 	// 摇杆值居中为 127，范围为 0~255，因此需要转换为 -127 ~ +127
 	rc->fx   = cmd->move_back  - 126; // X轴摇杆值 
 	rc->fy   = cmd->left_right - 128; // Y轴摇杆值
-	rc->fz   = cmd->up_down    - 127; // 当大于128时上浮,小于128时下潜，差值越大，速度越快
-	rc->yaw  = cmd->rotate     - 128; // 旋转
+	rc->fz   = cmd->up_down    - 127; // Z轴摇杆值(当大于128时上浮，小于128时下潜，差值越大，速度越快)
+	rc->yaw  = cmd->rotate     - 128; // 偏航摇杆值
+
+	rc->fx += (rc->yaw / 2); // 4推ROV，偏航摇杆值叠加在 X轴摇杆轴上(除以2是为了减小 偏航摇杆值的影响)
 
 	/* 垂直方向 */
-	rc->depth += (float)rc->fz / 50; // 期望深度 累加
+	if(abs(rc->fz) < 10) // Z轴摇杆值较小时不进行计算，防止过度累加
+		rc->fz = 0;
+	rc->depth += ((float)rc->fz / 50); // 期望深度 累加
 	
 	/* 水平方向 */
-	rc->force = sqrt(rc->fx * rc->fx + rc->fy * rc->fy); // 求取合力斜边大小
+	rc->force = sqrt(rc->fx * rc->fx + rc->fy * rc->fy); // 求取合力斜边大小                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  
 	rc->deg   = Rad2Deg(atan2(rc->fx, rc->fy));  // 求取合力角度：180 ~ -180
 
 	if(rc->deg < 0)	// 角度变换 以极坐标定义 角度顺序 0~360° 
@@ -86,8 +90,35 @@ void rov_depth_control(float expect_depth, float current_depth, propellerPower_t
 	vertical_force = PID_Control(&Total_Controller.High_Position_Control); // 获取 高度位置PID控制器 输出的控制量 
 
 	// TODO 推进器偏差值  推进器方向
-	propeller->leftMiddle   =  (vertical_force);//正反桨
-	propeller->rightMiddle  =  (vertical_force);//输出为负值
+	propeller->leftMiddle  =  vertical_force; // 正反桨
+	propeller->rightMiddle = -vertical_force; // 输出为负值
 
 }
+
+
+void sixAixs_get_rocker_params(rockerInfo_t *rc, cmd_t *cmd) // 获取摇杆参数值
+{
+	// 摇杆值居中为 127，范围为 0~255，因此需要转换为 -127 ~ +127
+	rc->fx   = cmd->move_back  - 126; // X轴摇杆值 
+	rc->fy   = cmd->left_right - 128; // Y轴摇杆值
+	rc->fz   = cmd->up_down    - 127; // 当大于128时上浮，小于128时下潜，差值越大，速度越快
+	rc->yaw  = cmd->rotate     - 128; // 偏航摇杆值
+
+	/* 垂直方向 */
+	if(abs(rc->fz) < 10) // Z轴摇杆值较小时不进行计算，防止过度累加
+		rc->fz = 0;
+	rc->depth += ((float)rc->fz / 50); // 期望深度 累加
+	
+	/* 水平方向 */
+	rc->force = sqrt(rc->fx * rc->fx + rc->fy * rc->fy); // 求取合力斜边大小                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  
+	rc->deg   = Rad2Deg(atan2(rc->fx, rc->fy));  // 求取合力角度：180 ~ -180
+
+	if(rc->deg < 0)	// 角度变换 以极坐标定义 角度顺序 0~360° 
+		rc->deg += 360; 
+
+	rc->rad = Deg2Rad(rc->deg);   // 转换弧度角 0~2PI
+
+	rc->percent = cmd->power / 100; // power最大为255 计算动力百分比
+}
+
 

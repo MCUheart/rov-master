@@ -30,7 +30,7 @@ depthSensor_t depthSensor_dev;
 depthSensor_t *depthSensor = &depthSensor_dev;
 
 
-
+Sensor_Type Sensor;
 
 
 /*******************************************************************************************************************/
@@ -174,7 +174,7 @@ int sensor_thread_init(void)
 
 
     // ADS1118 ADC 初始化
-    fd = ads1118Setup(ADS1118_PIN_BASE); 
+    /*fd = ads1118Setup(ADS1118_PIN_BASE); 
     if(fd < 0) // 先判断设备是否存在，不存在不创建对应线程
         ERROR_LOG(fd, "ads1118");
     else
@@ -182,10 +182,10 @@ int sensor_thread_init(void)
         log_i("ads1118 init");
         pthread_create(&adc_tid, NULL, adc_thread, NULL);
         pthread_detach(adc_tid);     
-    }
+    }*/
 
     // JY901 九轴 初始化
-    fd = jy901Setup();
+    /*fd = jy901Setup();
     if(fd < 0)
         ERROR_LOG(fd, "jy901");
     else
@@ -193,7 +193,7 @@ int sensor_thread_init(void)
         log_i("jy901   init");
         pthread_create(&jy901_tid, NULL, jy901_thread, &fd); 
         pthread_detach(jy901_tid);
-    }
+    }*/
 
     // 深度传感器 初始化
     fd = depthSensor_init(DEPTH_SENSOR_PIN_BASE);
@@ -208,7 +208,7 @@ int sensor_thread_init(void)
 
     return 0;
 }
-
+/*
 // 打印传感器信息
 void print_sensor_info(void)
 {
@@ -240,3 +240,4 @@ void print_sensor_info(void)
     log_d("   CPU.Temperature  |  %0.3f",  Sensor.CPU.Temperature); // CPU温度
     log_d("      CPU.Usages    |  %0.3f",  Sensor.CPU.Usage);       // CPU使用率
 }
+*/
