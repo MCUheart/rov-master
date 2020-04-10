@@ -50,30 +50,24 @@ $ sudo ./rovmaster
 ```shell
 $ sudo npi-config
 ```
+若系统时间不对，为时区未进行更改：
+在 `npi-config` > `Localisation Options` > `Change Timezone` 中选择修改。
 
-若时区不对，也可以在 `npi-config` > `Localisation Options` > `Change Timezone` 中选择修改。
-有时修改会后编译执行会出问题，未出现修改部分效果，此时 `make clean` 后再编译运行即可。
 
+### 2.3.2 lib库编译
+当修改了lib库中文件，需要进行重新编译时，进行编译选择：
+- 1.WiringNP
+- 2.easylogger
+- 3.mjpg-streamer
+
+启动 `compile.sh` 脚本，输入对应库的编号，进行自动化编译，并拷贝相关库
+```shell
+$ ./compile.sh
+```
+
+### 2.3.3 视频推流
 视频推流命令在 `video.sh` 脚本中，指定相关视频参数，在其中修改 **摄像头视频推流参数**即可。
 
-### 2.3.2 easylogger编译
-对easylogger编辑后，需要进行重新编译时：
-切换至 `lib/easylogger/` 目录，输入 `make` 进行编译后，需要重新拷贝生成的链接库 `libeasylogger.so`
-
-```shell
-$ cd lib/easylogger/
-$ make
-$ sudo cp libeasylogger.so ..
-$ sudo cp libeasylogger.so /usr/lib/
-```
-
-### 2.3.3 wiringNP编译
-对wiringNP编辑后，需要进行重新编译时：
-切换至 `lib/WiringNP/` 目录，启动 `./build.sh` 脚本进行自动编译即可
-
-```shell
-$ ./build.sh
-```
 
 # 3. 进度
 - 驱动模块

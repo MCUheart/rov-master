@@ -8,21 +8,26 @@ cd ./lib/WiringNP/
 chmod 755 build
 ./build
 
-
-echo "=================安装mjpg-streamer及相关依赖================="
+echo "===============编译mjpg-streamer及安装相关依赖=============="
 sudo apt-get update
 sudo apt-get install -y cmake libjpeg8-dev
 cd ../mjpg-streamer-experimental/
 make
 sudo make install
 
-echo "=======================安装easylogger======================"
-# easylogger 安装
+echo "=======================编译easylogger======================"
 cd ../easylogger
 make
 sudo cp libeasylogger.so ..
 sudo cp libeasylogger.so /usr/lib/
 
-cd ..
+cd ../..
+
+echo "=======================使编译脚本可执行====================="
+chmod +x compile.sh
+
+echo "=======================使推流脚本可执行====================="
+chmod +x video.sh
+
 
 exit 0
