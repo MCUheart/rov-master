@@ -3,7 +3,7 @@
 #define __OLED_H_
 
 #include "../user/DataType.h"
-#include "../applications/olcdfont.h"
+
 
 #define I2C_OLED_DEV  "/dev/i2c-2" // OLED 使用的 I2C接口
 #define I2C_OLED_ADDR 0x3C         // 默认 OLED 地址 0x3C

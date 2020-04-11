@@ -4,11 +4,13 @@
 
 #define LOG_TAG "oled"
 
-#include <elog.h>
-#include "oled.h"
 
-#include <stdlib.h>
+#include "oled.h"
+#include "oledfont.h"
+
+#include <elog.h>
 #include <math.h>
+#include <stdlib.h>
 
 #include <wiringPi.h>
 #include <wiringPiI2C.h>
