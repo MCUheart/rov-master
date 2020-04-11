@@ -14,7 +14,7 @@ SHARE=--share
 #-g     : 编译时加入调试信息，以便之后可以用gdb调试
 #-fPIC  : 编译动态链接库时加入的选项
 #-I./inc: -I选项指定从哪个目录寻找头文件，在这指定之后，在源文件中包含头文件就可以使用<>，这里./inc即为指定的目录
-CFLAG=-Wall -g -lwiringPi -lpthread -lm
+CFLAG=-Wall -g -lwiringPi -lpthread -lm -I../lib/easylogger/inc
 
 #LFLAG即library flag，表示链接生成可执行程序时所要链接的所有库的选项参数
 #-L./lib : -L指示动态/静态链接库所在的目录，这里./lib即所在的目录
