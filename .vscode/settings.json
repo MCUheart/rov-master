@@ -11,12 +11,14 @@
         "pca9685.h": "c",
         "pwmDevices.h": "c",
         "focus.h": "c",
-        "data.h": "c",
         "pid.h": "c",
         "led.h": "c",
         "devicethread.h": "c",
-        "iodevices.h": "c"
+        "iodevices.h": "c",
+        "stdio.h": "c",
+        "ano_link.h": "c"
     },
-    "python.jediEnabled": false
+    "python.jediEnabled": false,
+    "C_Cpp.errorSquiggles": "Disabled"
 
 }

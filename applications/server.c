@@ -4,52 +4,45 @@
 
 #define LOG_TAG "server"
 
-#include "../drivers/sys_status.h"
 #include "server.h"
+#include "../drivers/sys_status.h"
 #include "data.h"
 
+#include <arpa/inet.h>
 #include <elog.h>
+#include <errno.h>
+#include <net/if.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
-#include <unistd.h>
-#include <sys/types.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
-#include <net/if.h>
-#include <arpa/inet.h>
-#include <netdb.h>
-#include <pthread.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include <wiringPi.h>
 
-static int sever_sock  = -1;
+static int sever_sock = -1;
 static int client_sock = -1;
 
 /* 上位机的控制数据 */
 static cmd_t cmd_data;
 /* 接收数据包 */
 static uint8_t recv_buff[RECV_DATA_LEN] = {0};
-
 /* 返回数据包，包头位固定为：0xAA,0x55;  数据长度位：0x16 */
 static uint8_t return_data[RETURN_DATA_LEN] = {0xAA, 0x55, 0x16};
-
-
-
-
-
 
 void print_hex_data(const char *name, uint8_t *data, int len)
 {
     printf("%s:", name);
-    for(int i = 0; i < len; i++)
+    for (int i = 0; i < len; i++)
     {
         printf("%2x ", data[i]);
     }
     printf("\n");
 }
-
 
 /**
   * @brief  数据发送线程
@@ -116,14 +109,14 @@ void *server_thread(void *arg)
     static struct sockaddr_in serverAddr;
     static struct sockaddr_in clientAddr; // 用于保存客户端的地址信息
     static unsigned int addrLen;
-	static unsigned int clientCnt; // 记录客户端连接的次数
-    static int opt = 1;    // 套接字选项 Enable address reuse
-    static char *clientip; // 保存客户端 IP 地址
-    static char serverip[20]; // 保存本地 eth0 IP地址
+    static unsigned int clientCnt; // 记录客户端连接的次数
+    static int opt = 1;            // 套接字选项 Enable address reuse
+    static char *clientip;         // 保存客户端 IP 地址
+    static char serverip[20];      // 保存本地 eth0 IP地址
 
     pthread_t send_tid;
     pthread_t recv_tid;
-    
+
     /* 1.初始化服务器socket */
     if ((sever_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
     {
@@ -160,7 +153,7 @@ void *server_thread(void *arg)
 
     // 获取eth0的 ip地址
     get_localip("eth0", serverip);
-    log_i("[%s] [%d]",serverip, LISTEN_PORT);
+    log_i("[%s] [%d]", serverip, LISTEN_PORT);
 
     while (1)
     {
@@ -184,7 +177,6 @@ void *server_thread(void *arg)
     close(sever_sock);
 }
 
-
 /**
   * @brief  数据服务器线程初始化
   */
@@ -195,6 +187,5 @@ int server_thread_init(void)
     pthread_create(&server_tid, NULL, server_thread, NULL);
     pthread_detach(server_tid);
 
-    delay(20);
     return 0;
 }

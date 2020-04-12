@@ -7,13 +7,12 @@
 #include "ioDevices.h"
 
 #include <elog.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <pthread.h>
 
 #include <wiringPi.h>
-
 
 // 定义模拟pwm设备描述符，并指定pin、name
 static softPWM_t ledr = {
@@ -33,16 +32,13 @@ static softPWM_t beep = {
     .name = "beep",
 };
 
-
 // 错误状态灯，只亮红灯
 void errorStatus_led(void)
 {
-    IO_OUPUT_LOW (LEDR_PIN);
+    IO_OUPUT_LOW(LEDR_PIN);
     IO_OUPUT_HIGH(LEDG_PIN);
     IO_OUPUT_HIGH(LEDB_PIN);
 }
-
-
 
 /**
  * @brief  模拟PWM IO设备开关状态转换
@@ -50,20 +46,19 @@ void errorStatus_led(void)
  */
 void IO_DEVICE_OFF(softPWM_t *pwm)
 {
-    if(!strncmp(pwm->name,"led", 3)) 
-        IO_OUPUT_HIGH(pwm->pin); 
-    else 
-        IO_OUPUT_LOW(pwm->pin); 
+    if (!strncmp(pwm->name, "led", 3))
+        IO_OUPUT_HIGH(pwm->pin);
+    else
+        IO_OUPUT_LOW(pwm->pin);
 }
 
 void IO_DEVICE_ON(softPWM_t *pwm)
 {
-    if(!strncmp(pwm->name,"led", 3)) // RGB低电平点亮，与蜂鸣器状态相反	 
-        IO_OUPUT_LOW(pwm->pin); 
-    else 
-        IO_OUPUT_HIGH(pwm->pin); 
+    if (!strncmp(pwm->name, "led", 3)) // RGB低电平点亮，与蜂鸣器状态相反
+        IO_OUPUT_LOW(pwm->pin);
+    else
+        IO_OUPUT_HIGH(pwm->pin);
 }
-
 
 /**
  * @brief  模拟pwm设备设置
@@ -75,10 +70,10 @@ void IO_DEVICE_ON(softPWM_t *pwm)
  *  uint8_t   flag   如果为1，则为无尽模式
  */
 void sotfPwmSet(softPWM_t *pwm,
-                uint32_t  time, // 持续时间
-                uint32_t  per,
-                uint8_t   duty, // 占空比 (0~100)
-                uint8_t   flag)
+                uint32_t time, // 持续时间
+                uint32_t per,
+                uint8_t duty, // 占空比 (0~100)
+                uint8_t flag)
 {
     /* 
      * div取决于 softPwm_process所在线程休眠的时间 
@@ -86,12 +81,11 @@ void sotfPwmSet(softPWM_t *pwm,
     */
     static uint8_t div = 10;
 
-    pwm->time   = time/div; // 持续时间
-    pwm->period = per /div; // 周期
-    pwm->duty   = duty;     // 占空比 (0~100)
-    pwm->flag   = flag;     // 如果为1,则为无尽模式
+    pwm->time = time / div;  // 持续时间
+    pwm->period = per / div; // 周期
+    pwm->duty = duty;        // 占空比 (0~100)
+    pwm->flag = flag;        // 如果为1,则为无尽模式
 }
-
 
 /**
  * @brief  模拟pwm设备任务
@@ -100,26 +94,25 @@ void sotfPwmSet(softPWM_t *pwm,
  */
 void softPwm_process(softPWM_t *pwm)
 {
-    if(pwm->time >= 1) 
+    if (pwm->time >= 1)
         pwm->time--; // 持续时间-1
 
     // 判断 持续时间是否到达 或 无尽模式是否开启
-    if((pwm->time != 0) || (pwm->flag == 1)) 
+    if ((pwm->time != 0) || (pwm->flag == 1))
     {
         // 计数 >= 周期，清零
-        if(++pwm->cnt >= pwm->period)
-            pwm->cnt = 0; 
+        if (++pwm->cnt >= pwm->period)
+            pwm->cnt = 0;
 
         // 小于占空比时，继续输出高
-        if(pwm->cnt <= pwm->period * pwm->duty/100)
-            IO_DEVICE_ON(pwm);  // 设备开
+        if (pwm->cnt <= pwm->period * pwm->duty / 100)
+            IO_DEVICE_ON(pwm); // 设备开
         else
             IO_DEVICE_OFF(pwm); // 设备关
     }
-    else 
+    else
         IO_DEVICE_OFF(pwm); // 设备关
-} 
-
+}
 
 /*******************************************************************************************************************/
 //
@@ -135,16 +128,16 @@ void softPwm_process(softPWM_t *pwm)
 void *softPWM_thread(void *arg)
 {
     // 设备   时间  周期 占空比  标志位
-    sotfPwmSet(&ledr, 1000, 500, 50 , 0);
-    sotfPwmSet(&ledg, 1000, 500, 50 , 0);
-    sotfPwmSet(&ledb, 1000, 500, 50 , 1);
+    sotfPwmSet(&ledr, 1000, 500, 50, 0);
+    sotfPwmSet(&ledg, 1000, 500, 50, 0);
+    sotfPwmSet(&ledb, 1000, 500, 50, 1);
     //sotfPwmSet(&beep, 500, 200, 10, 0);
-    while(1)
+    while (1)
     {
         delay(10); // 休眠时间与周期有关
 
         /* 模拟PWM设备任务 */
-        softPwm_process(&ledr); 
+        softPwm_process(&ledr);
         softPwm_process(&ledg);
         softPwm_process(&ledb);
         softPwm_process(&beep);
@@ -158,25 +151,24 @@ void *button_thread(void *arg)
 {
     static uint8_t button_up = 1; // 按键按松开标志，1表示松开
 
-    while(1)
+    while (1)
     {
         delay(10);
-        if(button_up && (LOW == digitalRead(BUTTON_PIN)))
+        if (button_up && (LOW == digitalRead(BUTTON_PIN)))
         {
-            delay(10); // 去抖动 
+            delay(10); // 去抖动
             button_up = 0;
-            if(LOW == digitalRead(BUTTON_PIN))
+            if (LOW == digitalRead(BUTTON_PIN))
             {
                 printf("button down\n");
             }
         }
-        else if(HIGH == digitalRead(BUTTON_PIN)) // 如果松开
+        else if (HIGH == digitalRead(BUTTON_PIN)) // 如果松开
         {
-            button_up = 1; 	
+            button_up = 1;
         }
     }
 }
-
 
 /**
   * @brief  io设备线程初始化
@@ -187,9 +179,9 @@ int ioDevs_thread_init(void)
     pthread_t buttons_tid;
 
     pinMode(BUZZER_PIN, OUTPUT);
-    pinMode(LEDR_PIN,   OUTPUT);
-    pinMode(LEDG_PIN,   OUTPUT);
-    pinMode(LEDB_PIN,   OUTPUT);
+    pinMode(LEDR_PIN, OUTPUT);
+    pinMode(LEDG_PIN, OUTPUT);
+    pinMode(LEDB_PIN, OUTPUT);
 
     // 初始化，LED全部熄灭，蜂鸣器不响
     IO_OUPUT_HIGH(LEDR_PIN);
@@ -197,7 +189,7 @@ int ioDevs_thread_init(void)
     IO_OUPUT_HIGH(LEDB_PIN);
     IO_OUPUT_LOW(BUZZER_PIN);
 
-    pinMode(BUTTON_PIN,  INPUT);
+    pinMode(BUTTON_PIN, INPUT);
     pullUpDnControl(BUTTON_PIN, PUD_UP); // 上拉
 
     pthread_create(&softPWM_tid, NULL, softPWM_thread, NULL);
@@ -210,4 +202,3 @@ int ioDevs_thread_init(void)
     log_i("ioDevs  init");
     return 0;
 }
-

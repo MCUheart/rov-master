@@ -11,44 +11,46 @@
 #include "pwmDevices.h"
 
 #include <elog.h>
+#include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <pthread.h>
 #include <wiringPi.h>
 
 static propellerPower_t propellerPower = {0}; // 推进器推力控制器
 
 static propellerParam_t propellerParam = {
-	.pMax     = 1750, // 正向最大值 单位us
-	.med      = 1500, // 中值
-	.nMax     = 1250, // 反向最大值
-	.deadband = 1,    // 死区值
+    .pMax = 1750,  // 正向最大值 单位us
+    .med = 1500,   // 中值
+    .nMax = 1250,  // 反向最大值
+    .deadband = 1, // 死区值
 };
 
-static easyPWM_dev_t light = { // 探照灯
-    .pMax    = 20*1000, // 单位us
-    .nMax    = 0,
-    .speed   = 1000, 
+static easyPWM_dev_t light = {
+    // 探照灯
+    .pMax = 20 * 1000, // 单位us
+    .nMax = 0,
+    .speed = 1000,
     .channel = YUNTAI_CHANNEL,
-};    
+};
 
-static easyPWM_dev_t yuntai = { // 云台 
-    .pMax    = 2000, 
-    .med     = 1500,
-    .nMax    = 1000,
-    .speed   = 50, 
+static easyPWM_dev_t yuntai = {
+    // 云台
+    .pMax = 2000,
+    .med = 1500,
+    .nMax = 1000,
+    .speed = 50,
     .channel = LIGHT_CHANNEL,
-};   
+};
 
-static easyPWM_dev_t robot_arm = { // 机械臂
-    .pMax    = 2000,
-    .med     = 1500,
-    .nMax    = 1000,
-    .speed   = 50, 
+static easyPWM_dev_t robot_arm = {
+    // 机械臂
+    .pMax = 2000,
+    .med = 1500,
+    .nMax = 1000,
+    .speed = 50,
     .channel = ROBOT_ARM_CHANNEL,
 };
-
 
 /**
  * @brief  计算 PWM 高电平所占的周期
@@ -59,32 +61,32 @@ static easyPWM_dev_t robot_arm = { // 机械臂
 int calcTicks(int16_t duty)
 {
     float impulseMs;
-	static float cycleMs = 1000.0f / HERTZ; // 总周期20ms
-    impulseMs = duty / 1000.0f; // 单位转换为ms
+    static float cycleMs = 1000.0f / HERTZ; // 总周期20ms
+    impulseMs = duty / 1000.0f;             // 单位转换为ms
 
-	return (int)(impulseMs / cycleMs * MAX_PWM + 0.5f);
+    return (int)(impulseMs / cycleMs * MAX_PWM + 0.5f);
 }
 
 void propellerPwm_output_limit(int16_t *val)
 {
     int i;
-    for(i = 0;i < 6; i++)
+    for (i = 0; i < 6; i++)
     {
-        if(val[i] > propellerParam.pMax) // 正向限幅
+        if (val[i] > propellerParam.pMax) // 正向限幅
             val[i] = propellerParam.pMax;
 
-        if(val[i] < propellerParam.nMax) // 反向限幅
-            val[i] = propellerParam.nMax;    
+        if (val[i] < propellerParam.nMax) // 反向限幅
+            val[i] = propellerParam.nMax;
     }
 }
 
 void easyPwm_output_limit(easyPWM_dev_t *easyPWM)
 {
-    if(easyPWM->cur > easyPWM->pMax) // 正向限幅
+    if (easyPWM->cur > easyPWM->pMax) // 正向限幅
         easyPWM->cur = easyPWM->pMax;
 
-    if(easyPWM->cur < easyPWM->nMax) // 反向限幅
-        easyPWM->cur = easyPWM->nMax;    
+    if (easyPWM->cur < easyPWM->nMax) // 反向限幅
+        easyPWM->cur = easyPWM->nMax;
 }
 
 /**
@@ -99,17 +101,17 @@ void easyPwm_output_limit(easyPWM_dev_t *easyPWM)
 void propeller_init(void) //这边都需要经过限幅在给定  原先为2000->1500
 {
     int i;
-	// 给定最高转速信号
+    // 给定最高转速信号
     for (i = 0; i < 6; i++)
-	    pwmWrite(PCA9685_PIN_BASE + i, PROPELLER_POWER_P_MAX); 
+        pwmWrite(PCA9685_PIN_BASE + i, PROPELLER_POWER_P_MAX);
 
-	sleep(2); // 2s
+    sleep(2); // 2s
 
-	// 给定停转信号
+    // 给定停转信号
     for (i = 0; i < 6; i++)
-	    pwmWrite(PCA9685_PIN_BASE + i, PROPELLER_POWER_STOP); 
+        pwmWrite(PCA9685_PIN_BASE + i, PROPELLER_POWER_STOP);
 
-	sleep(1); // 1s
+    sleep(1); // 1s
 }
 
 /**
@@ -120,23 +122,22 @@ void propellerPwm_update(propellerPower_t *propeller)
 {
     int16_t power[6];
 
-	power[0] = PROPELLER_POWER_STOP + propeller->leftUp;     // 水平推进器
-	power[1] = PROPELLER_POWER_STOP + propeller->leftDown; 
-	power[2] = PROPELLER_POWER_STOP + propeller->rightUp;
-	power[3] = PROPELLER_POWER_STOP + propeller->rightDown;
+    power[0] = PROPELLER_POWER_STOP + propeller->leftUp; // 水平推进器
+    power[1] = PROPELLER_POWER_STOP + propeller->leftDown;
+    power[2] = PROPELLER_POWER_STOP + propeller->rightUp;
+    power[3] = PROPELLER_POWER_STOP + propeller->rightDown;
 
-	power[4] = PROPELLER_POWER_STOP + propeller->leftMiddle; // 垂直推进器
-	power[5] = PROPELLER_POWER_STOP + propeller->rightMiddle;
+    power[4] = PROPELLER_POWER_STOP + propeller->leftMiddle; // 垂直推进器
+    power[5] = PROPELLER_POWER_STOP + propeller->rightMiddle;
 
     // PWM限幅
     propellerPwm_output_limit(power);
 
     for (int i = 0; i < 6; i++)
-    {   
-	    pwmWrite(PCA9685_PIN_BASE + i, calcTicks(power[i])); 
+    {
+        pwmWrite(PCA9685_PIN_BASE + i, calcTicks(power[i]));
     }
 }
-
 
 /**
  * @brief  简单 PWM 设备处理函数
@@ -146,17 +147,17 @@ void easyPWM_devices_handle(easyPWM_dev_t *easyPWM, uint8_t *action)
 {
     switch (*action)
     {
-        case 0x01:
-            easyPWM->cur -= easyPWM->speed; // 正向
-            break;
-        case 0x02:
-            easyPWM->cur += easyPWM->speed; // 反向
-            break;
-        case 0x03:
-            easyPWM->cur = easyPWM->med; // 归中
-            break; 
-        default:
-            break;
+    case 0x01:
+        easyPWM->cur -= easyPWM->speed; // 正向
+        break;
+    case 0x02:
+        easyPWM->cur += easyPWM->speed; // 反向
+        break;
+    case 0x03:
+        easyPWM->cur = easyPWM->med; // 归中
+        break;
+    default:
+        break;
     }
     *action = 0x00; // 清除控制字
 
@@ -164,7 +165,6 @@ void easyPWM_devices_handle(easyPWM_dev_t *easyPWM, uint8_t *action)
 
     pwmWrite(PCA9685_PIN_BASE + easyPWM->channel, calcTicks(easyPWM->cur));
 }
-
 
 /*******************************************************************************************************************/
 //
@@ -176,20 +176,18 @@ void easyPWM_devices_handle(easyPWM_dev_t *easyPWM, uint8_t *action)
 void *propeller_thread(void *arg)
 {
     uint8_t action;
-    
+
     propeller_init();
-	while (1)
-	{
+    while (1)
+    {
         sleep(1);
         propellerPwm_update(&propellerPower);
 
-        easyPWM_devices_handle(&yuntai   , &action);
-        easyPWM_devices_handle(&light    , &action);
+        easyPWM_devices_handle(&yuntai, &action);
+        easyPWM_devices_handle(&light, &action);
         easyPWM_devices_handle(&robot_arm, &action);
     }
 }
-
-
 
 int pwmDevs_thread_init(void)
 {
@@ -198,7 +196,7 @@ int pwmDevs_thread_init(void)
 
     fd = pca9685Setup(PCA9685_PIN_BASE, HERTZ);
     // 判断对应 i2c接口、pca9685器件 是否存在，不存在直接返回，不创建对应线程
-    if(fd < 0)
+    if (fd < 0)
     {
         // 错误日志打印
         ERROR_LOG(fd, "pca9685");

@@ -1,11 +1,8 @@
 /*
- * @Description: ROV状态数据回传与控制命令接收解析，获取 系统状态(CPU、内存、硬盘、网卡网速)
+ * @Description: ROV状态数据回传与控制命令接收解析
  */
 
 #define LOG_TAG "data"
-
-
-#include "../drivers/sys_status.h"
 
 #include "data.h"
 #include "sensor.h"
@@ -13,19 +10,6 @@
 
 #include <elog.h>
 #include <stdio.h>
-#include <unistd.h>
-#include <pthread.h>
-#include <sys/shm.h>
-
-
-static system_status_t  system_dev;
-static system_status_t  *psystem = &system_dev;
-
-// 用于外部使用
-system_status_t *get_system_status(void)
-{   
-    return psystem;
-}
 
 /**
   * @brief  获取浮点型数据 头两位小数的100倍
@@ -34,7 +18,7 @@ system_status_t *get_system_status(void)
   */
 uint8_t get_decimal(float data)
 {
-    return (uint8_t) ((data - (int)data) * 100);
+    return (uint8_t)((data - (int)data) * 100);
 }
 
 /**
@@ -52,7 +36,6 @@ uint8_t calculate_check_sum(uint8_t *buff, uint8_t len)
     return sum;
 }
 
-
 /**
   * @brief  上位机控制数据解析
   * @param  控制数据包 *buff
@@ -64,7 +47,7 @@ void remote_control_data_analysis(uint8_t *buff, cmd_t *cmd) //控制数据解�
 
     if (buff[0] == 0xAA && buff[1] == 0x55) // 检测包头
     {
-        if(buff[2] == RECV_DATA_LEN) // 检测数据包长度(此判断暂无作用，用于后续 可变长度数据包)
+        if (buff[2] == RECV_DATA_LEN) // 检测数据包长度(此判断暂无作用，用于后续 可变长度数据包)
         {
             // 获取校验位
             rxCheck = calculate_check_sum(buff, RECV_DATA_LEN - 1);
@@ -72,23 +55,23 @@ void remote_control_data_analysis(uint8_t *buff, cmd_t *cmd) //控制数据解�
             if (rxCheck == buff[RECV_DATA_LEN]) // 校验位核对
             {
                 /* 开关类 */
-                cmd->depth_lock = buff[3];  // 深度锁定
-                cmd->sport_lock = buff[4];  // 方向锁定
+                cmd->depth_lock = buff[3]; // 深度锁定
+                cmd->sport_lock = buff[4]; // 方向锁定
 
-                cmd->all_lock   = buff[18]; // 运动控制总开关
+                cmd->all_lock = buff[18]; // 运动控制总开关
 
                 /* 姿态类 */
-                cmd->move_back  = buff[5];  // 前后
-                cmd->left_right = buff[6];  // 左右平移
-                cmd->up_down    = buff[7];  // 垂直
-                cmd->rotate     = buff[8];  // 旋转
+                cmd->move_back = buff[5];  // 前后
+                cmd->left_right = buff[6]; // 左右平移
+                cmd->up_down = buff[7];    // 垂直
+                cmd->rotate = buff[8];     // 旋转
 
                 /* 设备类 */
-                cmd->power      = buff[9];  // 动力控制  推进器动力系数
-                cmd->light      = buff[10]; // 灯光控制
-                cmd->camera     = buff[11]; // 变焦摄像头控制
-                cmd->yuntai     = buff[12]; // 云台控制
-                cmd->arm        = buff[13]; // 机械臂控制
+                cmd->power = buff[9];   // 动力控制  推进器动力系数
+                cmd->light = buff[10];  // 灯光控制
+                cmd->camera = buff[11]; // 变焦摄像头控制
+                cmd->yuntai = buff[12]; // 云台控制
+                cmd->arm = buff[13];    // 机械臂控制
             }
         }
     }
@@ -97,7 +80,6 @@ void remote_control_data_analysis(uint8_t *buff, cmd_t *cmd) //控制数据解�
 /* 
  * TODO 控制命令清零 【注意】这里仅清空控制数据指令，不能清除控制状态指令，因此，不能采用 meset 直接填充结构体为 0 
  */
-
 
 /**
   * @brief  calculate_check_sum(计算校验和)
@@ -108,123 +90,44 @@ void convert_rov_status_data(uint8_t *buff) // 转换需要返回上位机数据
     uint16_t troll; //暂存数据
     uint16_t tpitch;
     uint16_t tyaw;
-    static unsigned char speed_test;
-/*
-    troll = (short)((Sensor.JY901.Euler.Roll + 180) * 100); //数据转换:将角度数据转为正值并放大100倍
-    tpitch = (short)((Sensor.JY901.Euler.Pitch + 180) * 100);
-    tyaw = (short)((Sensor.JY901.Euler.Yaw + 180) * 100);
+    static uint8_t speed_test;
 
-    buff[3] = (int)Sensor.PowerSource.Voltage;         //整数倍
-    buff[4] = get_decimal(Sensor.PowerSource.Voltage); //小数的100倍
+    troll = (short)((rovInfo.jy901.roll + 180) * 100); // 数据转换:将角度数据转为正值并放大100倍
+    tpitch = (short)((rovInfo.jy901.pitch + 180) * 100);
+    tyaw = (short)((rovInfo.jy901.yaw + 180) * 100);
 
-    buff[5] = (int)Sensor.CPU.Temperature;         //整数倍
-    buff[6] = get_decimal(Sensor.CPU.Temperature); //小数的100倍
+    buff[3] = (int)rovInfo.powerSource.voltage;         //整数倍
+    buff[4] = get_decimal(rovInfo.powerSource.voltage); //小数的100倍
 
-    buff[7] = (int)Sensor.DepthSensor.Temperature;         //整数倍
-    buff[8] = get_decimal(Sensor.DepthSensor.Temperature); //小数的100倍
+    buff[5] = (int)rovInfo.system.cpu.temperature;         //整数倍
+    buff[6] = get_decimal(rovInfo.system.cpu.temperature); //小数的100倍
 
-    buff[9] = (int)(Sensor.DepthSensor.Depth) >> 16; //高8位
-    buff[10] = (int)(Sensor.DepthSensor.Depth) >> 8;  //中8位
-    buff[11] = (int)(Sensor.DepthSensor.Depth);       //低8位
+    buff[7] = (int)rovInfo.depthSensor.temperature;         //整数倍
+    buff[8] = get_decimal(rovInfo.depthSensor.temperature); //小数的100倍
 
-    buff[12] = tyaw >> 8;    // Yaw 高8位
+    buff[9] = (int)(rovInfo.depthSensor.depth) >> 16; //高8位
+    buff[10] = (int)(rovInfo.depthSensor.depth) >> 8; //中8位
+    buff[11] = (int)(rovInfo.depthSensor.depth);      //低8位
+
+    buff[12] = tyaw >> 8;     // Yaw 高8位
     buff[13] = (uint8_t)tyaw; //低8位
 
-    buff[14] = tpitch >> 8;   // Pitch 高8位
+    buff[14] = tpitch >> 8;     // Pitch 高8位
     buff[15] = (uint8_t)tpitch; //低8位
 
-    buff[16] = troll >> 8;   // Roll 高8位
+    buff[16] = troll >> 8;     // Roll 高8位
     buff[17] = (uint8_t)troll; //低8位
 
-    buff[18] = (uint8_t)speed_test++;        //x轴航速
-    buff[19] = 0; //设备提示字符
+    buff[18] = (uint8_t)speed_test++; //x轴航速
+    buff[19] = 0;                     //设备提示字符
 
     buff[20] = 0x01; // cmd->All_Lock;
 
-    buff[21] = (int)Sensor.PowerSource.Current;
-    buff[22] = get_decimal(Sensor.PowerSource.Current); //小数的100倍;
+    buff[21] = (int)rovInfo.powerSource.current;
+    buff[22] = get_decimal(rovInfo.powerSource.current); //小数的100倍;
 
     buff[23] = 0x0; // 保留
     buff[24] = 0x0; // 保留
-*/
-    buff[25] = calculate_check_sum(buff, RETURN_DATA_LEN - 1);//获取校验和
+
+    buff[25] = calculate_check_sum(buff, RETURN_DATA_LEN - 1); //获取校验和
 }
-
-
-/*******************************************************************************************************************/
-//
-// 线程
-//
-/*******************************************************************************************************************/
-
-/**
- * @brief  获取CPU状态 线程
- *  get_cpu_usage函数内已经休眠1s，因此不再设置休眠  
- */
-void *cpu_status_thread(void *arg)
-{
-    while(1)
-    {
-        psystem->cpu.temperature = get_cpu_temp();
-        psystem->cpu.usage_rate  = get_cpu_usage();
-    }
-}
-
-/**
- * @brief  获取网速 线程
- *  get_net_speed函数内已经休眠1s，因此不再设置休眠  
- */
-void *net_speed_thread(void *arg)
-{
-    psystem->net.name = "eth0"; // 指定 eht0 网卡
-    // 获取ip地址
-    get_localip(psystem->net.name, psystem->net.ip);
-    while(1)
-    {
-        psystem->net.netspeed = get_net_speed(psystem->net.name);
-    }  
-}
-
-/**
- * @brief  获取内存、硬盘状态 线程
- */
-void *mem_disk_status_thread(void *arg)
-{
-    while(1)
-    {
-        // 获取内存使用情况
-        get_memory_status(&psystem->memory);
-        // 获取硬盘使用情况
-        get_disk_status  (&psystem->disk);   
-        // 1s更新一次
-        sleep(1); 
-    }
-}
-
-/**
-  * @brief  系统状态获取 线程初始化
-  *  CPU、网卡网速 状态都是通过休眠一段时间，两次数据对比进行测算的，因此都需要各开一个线程
-  *  内存、硬盘 状态共用1个即可
-  */
-
-  
-int system_status_thread_init(void)
-{
-    pthread_t cpu_tid;
-    pthread_t net_tid;  
-    pthread_t mem_disk_tid;
-
-    pthread_create(&cpu_tid, NULL, cpu_status_thread, NULL);
-    pthread_detach(cpu_tid);
-
-    pthread_create(&net_tid, NULL, net_speed_thread, NULL);
-    pthread_detach(net_tid);    
-
-    // 内存、硬盘 状态获取共用1个线程
-    pthread_create(&mem_disk_tid, NULL, mem_disk_status_thread, NULL);
-    pthread_detach(mem_disk_tid);
-
-    return 0;
-}
-
-

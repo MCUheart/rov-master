@@ -27,21 +27,17 @@ typedef struct
 
 } netData_t;
 
-
-/* --------------------------------------------------------------------------------------------------- */
-
-/* 内存状况 描述符 */
+// 内存状况 
 typedef struct 
 {
     uint32_t total;     // 内存总数
     uint32_t free;      // 完全未用到的物理内存
     uint32_t available; // 可用内存数 MemAvailable ≈ MemFree + Buffers(文件缓冲大小) + Cached(高速缓冲大小)
     float    usage_rate;// 使用率
-
 } memory_t;
 
 
-/* 硬盘状况 描述符 */
+// 硬盘状况 
 typedef struct
 {
 	uint32_t total;
@@ -50,14 +46,14 @@ typedef struct
 } disk_t;
 
 
-/* CPU 状态 */
+// CPU 状态
 typedef struct
 {
     float usage_rate;
     float temperature;
 }cpu_t;
 
-/* 网卡 状态 */
+// 网卡 状态 
 typedef struct
 {
     char  *name;    // 网卡名
@@ -65,15 +61,9 @@ typedef struct
     float netspeed; // 网速
 }net_t;
 
-/* 系统状态 */
-typedef struct
-{
-    net_t    net;   // 网卡
-    cpu_t    cpu;   // cpu
-    disk_t   disk;  // 硬盘
-    memory_t memory;// 内存
+/* --------------------------------------------------------------------------------------------------- */
 
-}system_status_t;
+
 
 // 获取 CPU 温度
 float get_cpu_temp(void); 
@@ -91,4 +81,4 @@ float get_net_speed(char *eth);
 void get_localip(const char *eth_name, char *ip);
 
 
-#endif /* _SYS_STATUS_H_ */
+#endif /* __SYS_STATUS_H_ */

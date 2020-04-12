@@ -3,35 +3,33 @@
 
 #include "../user/DataType.h"
 
-#define MS5837_I2C_DEV  "/dev/i2c-1"  // MS5837 使用的 I2C设备
+#define MS5837_I2C_DEV "/dev/i2c-1" // MS5837 使用的 I2C设备
 /* MS5837-30BA address is 1110110x (write: x=0, read: x=1). */
-#define MS583703BA_I2C_ADDR         0x76  // MS5387 I2C 地址 (datasheet P9)
+#define MS583703BA_I2C_ADDR 0x76 // MS5387 I2C 地址 (datasheet P9)
 
-#define MS583703BA_RESET            0x1E
-#define MS583703BA_ADC_RD           0x00
-#define	MS583703BA_PROM_RD          0xA0
+#define MS583703BA_RESET 0x1E
+#define MS583703BA_ADC_RD 0x00
+#define MS583703BA_PROM_RD 0xA0
 
 /* 转换命令：压力 (datasheet P9) */
-#define MS583703BA_D1_OSR_256	    0x40
-#define MS583703BA_D1_OSR_512		0x42
-#define MS583703BA_D1_OSR_1024		0x44
-#define MS583703BA_D1_OSR_2048		0x46
-#define MS583703BA_D1_OSR_4096		0x48
-#define	MS583703BA_D1_OSR_8192   	0x4A
+#define MS583703BA_D1_OSR_256 0x40
+#define MS583703BA_D1_OSR_512 0x42
+#define MS583703BA_D1_OSR_1024 0x44
+#define MS583703BA_D1_OSR_2048 0x46
+#define MS583703BA_D1_OSR_4096 0x48
+#define MS583703BA_D1_OSR_8192 0x4A
 
 /* 转换命令：温度 (datasheet P9) */
-#define MS583703BA_D2_OSR_256		0x50
-#define MS583703BA_D2_OSR_512		0x52
-#define MS583703BA_D2_OSR_1024		0x54
-#define MS583703BA_D2_OSR_2048		0x56
-#define MS583703BA_D2_OSR_4096		0x58
-#define	MS583703BA_D2_OSR_8192   	0x5A
-
+#define MS583703BA_D2_OSR_256 0x50
+#define MS583703BA_D2_OSR_512 0x52
+#define MS583703BA_D2_OSR_1024 0x54
+#define MS583703BA_D2_OSR_2048 0x56
+#define MS583703BA_D2_OSR_4096 0x58
+#define MS583703BA_D2_OSR_8192 0x5A
 
 /* 传感器标号 */
 #define PRESSURE_SENSOR 0
 #define TEMPERATURE_SENSOR 1
-
 
 typedef struct
 {
@@ -47,7 +45,7 @@ typedef struct
     */
     uint16_t c[7];      // prom中的出厂校准参数 calib_param[7]
     uint8_t crc;        // crc校验
-    uint8_t factory_id; // 出厂参数 (为 c[0]的前12bit) 
+    uint8_t factory_id; // 出厂参数 (为 c[0]的前12bit)
 
     uint32_t D1_Pres; // 原始压力数字量
     uint32_t D2_Temp; // 原始温度数字量
@@ -62,12 +60,9 @@ typedef struct
     float pressure;    // 实际压力值
     float temperature; // 实际温度值
 
-}ms5837_t; /* 存放ms5837相关参数 */
-
+} ms5837_t; /* 存放ms5837相关参数 */
 
 // MS5837初始化
 int ms5837Setup(const int pinBase);
 
-
 #endif
-

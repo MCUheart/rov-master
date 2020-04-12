@@ -7,8 +7,8 @@
 
 #include "../user/DataType.h"
 
-#define SPL1301_I2C_DEV  "/dev/i2c-1"  // SPL1301 使用的 I2C设备
-#define SPL1301_I2C_ADDR 0x77          // SPL1301 I2C 地址 (datasheet P9)
+#define SPL1301_I2C_DEV "/dev/i2c-1" // SPL1301 使用的 I2C设备
+#define SPL1301_I2C_ADDR 0x77        // SPL1301 I2C 地址 (datasheet P9)
 
 /* 产品与版本ID 寄存器地址 */
 #define PRODUCT_REVISION_ID 0x0D
@@ -33,22 +33,22 @@ typedef struct
     int16_t c20;
     int16_t c21;
     int16_t c30;
-}spl1301_calib_param_t; // spl1301 出厂校准参数
+} spl1301_calib_param_t; // spl1301 出厂校准参数
 
 typedef struct
 {
     spl1301_calib_param_t calib_param; /* calibration data */
-    int8_t product_id;  // 产品ID     
-    int8_t revision_id; // 修订ID   
+    int8_t product_id;                 // 产品ID
+    int8_t revision_id;                // 修订ID
 
     int32_t i32rawPressure;    // 原始压力值
     int32_t i32rawTemperature; // 原始温度值
-    int32_t i32kP; // 压力系数
-    int32_t i32kT; // 温度系数
+    int32_t i32kP;             // 压力系数
+    int32_t i32kT;             // 温度系数
 
     float pressure;    // 实际压力值
     float temperature; // 实际温度值
-}spl1301_t; 
+} spl1301_t;
 
 // SPL1301 初始化
 int spl1301Setup(const int pinBase);

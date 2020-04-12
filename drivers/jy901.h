@@ -4,14 +4,14 @@
 
 #include "../user/DataType.h"
 
-#define JY901_UART_DEV  "/dev/ttyS2" // JY901 使用的 UART 设备
-#define JY901_UART_BAUD 115200       // JY901 UART 波特率
+#define JY901_UART_DEV "/dev/ttyS2" // JY901 使用的 UART 设备
+#define JY901_UART_BAUD 9600        // JY901 UART 波特率
 
 #define JY901_PACKET_LENGTH 11 // JY901 数据包长度
 
 /* JY901 命令,暂不使用*/
 #define JY901_CMDS 0
-#if JY901_CMDS 
+#if JY901_CMDS
 
 #define SAVE 0x00
 #define CALSW 0x01
@@ -58,7 +58,7 @@
 #define HZ 0x3c
 #define Roll 0x3d
 #define Pitch 0x3e
-#define Yaw	0x3f
+#define Yaw 0x3f
 #define TEMP 0x40
 #define D0Status 0x41
 #define D1Status 0x42
@@ -92,87 +92,112 @@
 
 struct STime
 {
-	unsigned char ucYear;
-	unsigned char ucMonth;
-	unsigned char ucDay;
-	unsigned char ucHour;
-	unsigned char ucMinute;
-	unsigned char ucSecond;
-	unsigned short usMiliSecond;
+    unsigned char ucYear;
+    unsigned char ucMonth;
+    unsigned char ucDay;
+    unsigned char ucHour;
+    unsigned char ucMinute;
+    unsigned char ucSecond;
+    unsigned short usMiliSecond;
 };
 
 struct SAcc
 {
-	short a[3];
-	short T;
+    short a[3];
+    short T;
 };
 struct SGyro
 {
-	short w[3];
-	short T;
+    short w[3];
+    short T;
 };
 struct SAngle
 {
-	short angle[3];
-	short T;
+    short angle[3];
+    short T;
 };
 struct SMag
 {
-	short h[3];
-	short T;
+    short h[3];
+    short T;
 };
 
 struct SDStatus
 {
-	short sDStatus[4];
+    short sDStatus[4];
 };
 
 struct SPress
 {
-	long lPressure;
-	long lAltitude;
+    long lPressure;
+    long lAltitude;
 };
 
 struct SLonLat
 {
-	long lLon;
-	long lLat;
+    long lLon;
+    long lLat;
 };
 
 struct SGPSV
 {
-	short sGPSHeight;
-	short sGPSYaw;
-	long lGPSVelocity;
+    short sGPSHeight;
+    short sGPSYaw;
+    long lGPSVelocity;
 };
 struct SQ
 {
-	short q[4];
+    short q[4];
 };
 
 typedef struct
 {
-	struct STime	stcTime;
-	struct SAcc 	stcAcc;
-	struct SGyro 	stcGyro;
-	struct SAngle 	stcAngle;
-	struct SMag 	stcMag;
-	struct SDStatus stcDStatus;
-	struct SPress 	stcPress;
-	struct SLonLat 	stcLonLat;
-	struct SGPSV 	stcGPSV;
-	struct SQ       stcQ;
-}jy901_t;
+    struct STime stcTime;
+    struct SAcc stcAcc;
+    struct SGyro stcGyro;
+    struct SAngle stcAngle;
+    struct SMag stcMag;
+    struct SDStatus stcDStatus;
+    struct SPress stcPress;
+    struct SLonLat stcLonLat;
+    struct SGPSV stcGPSV;
+    struct SQ stcQ;
 
+} jy901_raw_t; /* JY901原始数据结构体 */
 
-/*-----------------初始化函数----------------*/
+typedef struct
+{
+    float x;
+    float y;
+    float z;
+} Vector3f; //3轴向量 float型
+
+typedef struct
+{
+    short x;
+    short y;
+    short z;
+} Vector3s; //3轴向量 short型 16为短整型
+
+/* --------------------------------------------------------------------------------------------------- */
+
+typedef struct
+{
+    Vector3f acc;   //加速度
+    Vector3f gyro;  //角速度
+    Vector3f speed; //速度
+    Vector3s mag;   //磁场
+
+    /* 欧拉角 */
+    float roll;        //x
+    float pitch;       //y
+    float yaw;         //z
+    float temperature; //JY901温度
+
+} jy901_t; /* JY901解算后数据结构体 */
+
 int jy901Setup(void);
 
-/*-----------------应用函数----------------*/
-void copeJY901_data(uint8_t Data);
-
-
-//extern JY901_Type JY901; //JY901真实值结构体
-extern short Compass_Offset_Angle; //指南针补偿角度   由于受到板子磁场干扰，需要加一个补偿角度  -360 ~ +360
+void copeJY901_data(uint8_t data, jy901_t *jy901);
 
 #endif

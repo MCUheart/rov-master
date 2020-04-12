@@ -7,13 +7,12 @@
 #include "spl1301.h"
 
 #include <elog.h>
-#include <stdio.h>
-#include <math.h>
 #include <errno.h>
+#include <math.h>
+#include <stdio.h>
 
 #include <wiringPi.h>
 #include <wiringPiI2C.h>
-
 
 static spl1301_t spl1301_dev;
 static spl1301_t *spl1301 = &spl1301_dev;
@@ -28,11 +27,11 @@ int spl1301_get_id(int fd)
     reg = wiringPiI2CReadReg8(fd, PRODUCT_REVISION_ID);
 
     // 若无法读取数据，判定为 接入的不是SPL1301，或未接入
-    if(reg < 0)
+    if (reg < 0)
         return -1;
 
     spl1301->revision_id = reg & 0x0F;
-    spl1301->product_id  = (reg & 0xF0) >> 4;
+    spl1301->product_id = (reg & 0xF0) >> 4;
 
     return spl1301->product_id;
 }
@@ -187,7 +186,6 @@ void spl1301_get_calib_param(int fd)
     spl1301->calib_param.c30 = (int16_t)h << 8 | l;
 }
 
-
 /**
  * @brief 启动 spl1301 温度测量
  * @notice 如果设置 spl1301 模式位连续采样，则该函数不需要使用
@@ -304,12 +302,12 @@ static int myDigitalRead(struct wiringPiNodeStruct *node, int pin)
 {
     /* 0为压力通道，1为温度通道 */
     int channel = pin - node->pinBase;
-    int fd      = node->fd;
+    int fd = node->fd;
 
     /* 先获取温度数据，温度补偿 */
     spl1301_get_raw_temp(fd);
 
-    if(PRESSURE_SENSOR == channel)
+    if (PRESSURE_SENSOR == channel)
     {
         /* 先获取原始数据 */
         spl1301_get_raw_pressure(fd);
@@ -317,7 +315,7 @@ static int myDigitalRead(struct wiringPiNodeStruct *node, int pin)
         /* 再根据内部ram定标数据进行转换 */
         return get_spl1301_pressure();
     }
-    else if(TEMPERATURE_SENSOR == channel)
+    else if (TEMPERATURE_SENSOR == channel)
     {
         return get_spl1301_temperature();
     }
@@ -325,8 +323,6 @@ static int myDigitalRead(struct wiringPiNodeStruct *node, int pin)
     log_e("spl1301 channel range in [0, 1]");
     return -1;
 }
-
-
 
 /**
  * @brief  初始化并设置 spl1301
@@ -338,9 +334,9 @@ static int myDigitalRead(struct wiringPiNodeStruct *node, int pin)
 int spl1301Setup(const int pinBase)
 {
     static int fd;
-	struct wiringPiNodeStruct *node = NULL; // 指针初始化为NULL，以免产生段错误
-    
-	// 小于0代表无法找到该i2c接口，输入命令 sudo npi-config 使能该i2c接口
+    struct wiringPiNodeStruct *node = NULL; // 指针初始化为NULL，以免产生段错误
+
+    // 小于0代表无法找到该i2c接口，输入命令 sudo npi-config 使能该i2c接口
     fd = wiringPiI2CSetupInterface(SPL1301_I2C_DEV, SPL1301_I2C_ADDR);
     if (fd < 0)
         return -1;
@@ -348,7 +344,7 @@ int spl1301Setup(const int pinBase)
     /* 检测是否存在 spl1301 器件
      * 小于0代表读取失败，代表不存在该 SPL1301 器件，或者器件地址错误
     */
-    if(spl1301_get_id(fd) < 0)
+    if (spl1301_get_id(fd) < 0)
         return -2;
 
     // 获取出厂标定参数
@@ -358,17 +354,16 @@ int spl1301Setup(const int pinBase)
     // 采样率 = 1Hz; Temperature 超采样率 = 8;
     spl1301_rateset(fd, TEMPERATURE_SENSOR, 32, 8);
     /* 后台模式(自动开启转换 气压 及 温度)，即自动连续测量模式 */
-    spl1301_start_continuous(fd, CONTINUOUS_P_AND_T); 
+    spl1301_start_continuous(fd, CONTINUOUS_P_AND_T);
 
     // 创建节点加入链表，2个通道，一个为压力值，一个为温度值
     node = wiringPiNewNode(pinBase, 2);
-	if (!node)
+    if (!node)
         return -4;
 
     // 注册方法
-    node->fd          = fd;
+    node->fd = fd;
     node->digitalRead = myDigitalRead;
 
     return fd;
 }
-

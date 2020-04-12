@@ -1,119 +1,44 @@
 /*
- * File      : drv_ano.c
- * COPYRIGHT (C) 2019 JMU Electronic Technology Association Team 
+ * ÄäÃûµØÃæÕ¾Êı¾İ´«Êä
  *
  * Attention: ½ÓÊÕÖ»ĞèÒªµ÷ÓÃ -> ANO_DT_Data_Receive_Prepare(uint8_t data);
  *¡¾Í³Ò»½Ó¿Ú¡¿ ·¢ËÍÖ»ĞèÒªµ÷ÓÃ -> ANO_SEND_StateMachine(void);
  *            ±£´æ²ÎÊıĞèµ÷ÓÃ -> void Save_Or_Reset_PID_Parameter(void);
  */
-#include "../applications/PID.h"
-#include "../user/DataType.h"
-
 #include "ano_link.h"
+#include "../applications/PID.h"
+#include "../applications/sensor.h"
+#include "../user/debug.h"
 #include <elog.h>
-#include <netinet/ip.h>
-#include <pthread.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <unistd.h>
-
-const int SERV_PORT = 8000;
-const int MAXLINE = 2048;
-
-static struct sockaddr_in servaddr;
-static struct sockaddr_in cliaddr;
-
-static int sockfd;
-static socklen_t len;
-
-void *ano_send_thread(void *arg)
-{
-    while (1)
-    {
-        ANO_SEND_StateMachine();
-        sleep(1); // 1s¸üĞÂÒ»´Î
-    }
-    return NULL;
-}
-
-void dg_echo(int sockfd, struct sockaddr *pcliaddr)
-{
-    int n;
-    char mesg[MAXLINE];
-
-    for (;;)
-    {
-
-        if ((n = recvfrom(sockfd, mesg, MAXLINE, 0, pcliaddr, &len)) < 0)
-        {
-            perror("recvfrom error");
-            exit(1);
-        } //if
-        for (int i = 0; i < 20; i++)
-        {
-            printf("%x", mesg[i]);
-        }
-
-        if ((n = sendto(sockfd, mesg, n, 0, pcliaddr, len)) < 0)
-        {
-            perror("sendto error");
-            exit(1);
-        }
-    }
-}
-
-int ano_udp_server_init(void)
-{
-    pthread_t send_tid;
-
-    bzero(&servaddr, sizeof(servaddr));
-    servaddr.sin_family = AF_INET;
-    servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-    servaddr.sin_port = htons(SERV_PORT);
-
-    if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
-    {
-        perror("socket error");
-    }
-
-    if (bind(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr)))
-    {
-        perror("bind error");
-    }
-
-    len = sizeof(cliaddr);
-    dg_echo(sockfd, (struct sockaddr *)&cliaddr);
-    //pthread_create(&send_tid, NULL, ano_send_thread, NULL);
-    //pthread_detach(send_tid);
-
-    return 0;
-}
-/*---------------------- Constant / Macro Definitions -----------------------*/
-
 #define BYTE0(dwTemp) (*((char *)(&dwTemp) + 0))
 #define BYTE1(dwTemp) (*((char *)(&dwTemp) + 1))
 #define BYTE2(dwTemp) (*((char *)(&dwTemp) + 2))
 #define BYTE3(dwTemp) (*((char *)(&dwTemp) + 3))
 
 #define HardwareType 0.00 //Ó²¼şÖÖÀà  00ÎªÆäËûÓ²¼ş°æ±¾
-#define HardwareVER 2.00  //Ó²¼ş°æ±¾
-#define SoftwareVER 7.50  //Èí¼ş°æ±¾
+#define HardwareVER 1.00  //Ó²¼ş°æ±¾
+#define SoftwareVER 1.50  //Èí¼ş°æ±¾
 #define ProtocolVER 1     //Ğ­Òé°æ±¾
 #define BootloaderVER 1   //Bootloader°æ±¾
-/*----------------------- Variable Declarations. -----------------------------*/
+
 #define PID_USE_NUM 8
+
 Vector3f_pid PID_Parameter[PID_USE_NUM] = {0};
+
 uint8_t data_to_send[50];           //ANOµØÃæÕ¾·¢ËÍÊı¾İ»º³å
 uint8_t ANO_Send_PID_Flag[6] = {0}; //PID·¢ËÍ±êÖ¾Î»
-
 uint8_t Sort_PID_Cnt = 0;
 uint8_t Sort_PID_Flag = 0; //PID×´Ì¬±êÖ¾Î»£º1´æFLASH  2¸´Î»Ô­Ê¼Êı¾İ
 
 //---------------ÕâÀïÊÇ·Ö¸ô·û¡ı¡ı¡ı¡ı¡ı¡ı¡ı¡ı¡ı¡ı<ÒÔÏÂÎª½ÓÊÕ º¯Êı>¡ı¡ı¡ı¡ı¡ı¡ı¡ı¡ı¡ı¡ıÕâÀïÊÇ·Ö¸ô·û------------------//
 
+//Send_Dataº¯ÊıÊÇĞ­ÒéÖĞËùÓĞ·¢ËÍÊı¾İ¹¦ÄÜÊ¹ÓÃµ½µÄ·¢ËÍº¯Êı
+//ÒÆÖ²Ê±£¬ÓÃ»§Ó¦¸ù¾İ×ÔÉíÓ¦ÓÃµÄÇé¿ö£¬¸ù¾İÊ¹ÓÃµÄÍ¨ĞÅ·½Ê½£¬ÊµÏÖ´Ëº¯Êı
+void ANO_DT_Send_Data(uint8_t *dataToSend, uint8_t len)
+{
+    ano_udp_send(dataToSend, len);
+}
 /*******************************************
 * º¯ Êı Ãû£ºANO_DT_Data_Receive_Prepare
 * ¹¦    ÄÜ£ºANOµØÃæÕ¾Êı¾İ½âÎö
@@ -189,11 +114,8 @@ static void ANO_DT_Send_Check(uint8_t head, uint8_t check_sum)
         sum += data_to_send[i];
     }
     data_to_send[6] = sum;
-    if ((sendto(sockfd, data_to_send, 7, 0, (struct sockaddr *)&cliaddr, len)) < 0)
-    {
-        printf("len %d\n", len);
-        perror("sendto error");
-    }
+
+    ANO_DT_Send_Data(data_to_send, 7);
 }
 
 /*******************************************
@@ -301,7 +223,6 @@ void ANO_DT_Data_Receive_Anl(uint8_t *data_buf, uint8_t num)
     }
     if (*(data_buf + 2) == 0x15) //½ÓÊÕPID6  ¡¾¸ÄÎªÍÆ½øÆ÷·½Ïò±êÖ¾¡¿
     {
-
         ANO_DT_Send_Check(*(data_buf + 2), sum);
         Sort_PID_Cnt++;
         Sort_PID_Flag = 1;
@@ -337,11 +258,11 @@ void ANO_Data_Send_Version(int hardwareType, int hardwareVER, int softwareVER, i
     data_to_send[_cnt++] = BYTE1(_temp);
     data_to_send[_cnt++] = BYTE0(_temp);
 
-    _temp2 = (int)(ProtocolVER * 100); //µ¥Î»cm
+    _temp2 = (int)(ProtocolVER * 100);
     data_to_send[_cnt++] = BYTE1(_temp2);
     data_to_send[_cnt++] = BYTE0(_temp2);
 
-    _temp2 = (int)(BootloaderVER * 100); //µ¥Î»cm  MS5837_Pressure
+    _temp2 = (int)(BootloaderVER * 100);
     data_to_send[_cnt++] = BYTE1(_temp2);
     data_to_send[_cnt++] = BYTE0(_temp2);
 
@@ -352,13 +273,9 @@ void ANO_Data_Send_Version(int hardwareType, int hardwareVER, int softwareVER, i
         sum += data_to_send[i];
     }
     data_to_send[_cnt++] = sum;
-    if ((sendto(sockfd, data_to_send, _cnt, 0, (struct sockaddr *)&cliaddr, len)) < 0)
-    {
-        printf("len %d\n", len);
-        perror("sendto error");
-    }
-}
 
+    ANO_DT_Send_Data(data_to_send, _cnt);
+}
 /*******************************************
 * º¯ Êı Ãû£ºANO_Data_Send_Status
 * ¹¦    ÄÜ£º·¢ËÍ»ù±¾ĞÅÏ¢£¨Å·À­Èı½Ç¡¢¸ß¶È¡¢Ëø¶¨×´Ì¬£©¡¾µÚ¶ş×é¡¿
@@ -366,7 +283,7 @@ void ANO_Data_Send_Version(int hardwareType, int hardwareVER, int softwareVER, i
 * ·µ »Ø Öµ£ºnone
 * ×¢    Òâ£ºnone
 ********************************************/
-void ANO_Data_Send_Status(int roll, int pitch, int yaw, int depth) //·¢ËÍ»ù±¾ĞÅÏ¢£¨×ËÌ¬¡¢Ëø¶¨×´Ì¬£©
+void ANO_Data_Send_Status(float roll, float pitch, float yaw, float depth) //·¢ËÍ»ù±¾ĞÅÏ¢£¨×ËÌ¬¡¢Ëø¶¨×´Ì¬£©
 {
     uint8_t _cnt = 0;
     int16_t _temp;
@@ -404,10 +321,7 @@ void ANO_Data_Send_Status(int roll, int pitch, int yaw, int depth) //·¢ËÍ»ù±¾ĞÅÏ
         sum += data_to_send[i];
     }
     data_to_send[_cnt++] = sum;
-    if ((sendto(sockfd, data_to_send, _cnt, 0, (struct sockaddr *)&cliaddr, len)) < 0)
-    {
-        perror("sendto error");
-    }
+    ANO_DT_Send_Data(data_to_send, _cnt);
 }
 
 /*******************************************
@@ -467,10 +381,7 @@ void ANO_DT_Send_Senser(float a_x, float a_y, float a_z, float g_x, float g_y, f
     }
     data_to_send[_cnt++] = sum;
 
-    if ((sendto(sockfd, data_to_send, _cnt, 0, (struct sockaddr *)&cliaddr, len)) < 0)
-    {
-        perror("sendto error");
-    }
+    ANO_DT_Send_Data(data_to_send, _cnt);
 }
 
 /*******************************************
@@ -509,10 +420,7 @@ void ANO_DT_Send_High(int pressure_high, uint16_t ultrasonic_high)
         sum += data_to_send[i];
     }
     data_to_send[_cnt++] = sum;
-    if ((sendto(sockfd, data_to_send, _cnt, 0, (struct sockaddr *)&cliaddr, len)) < 0)
-    {
-        perror("sendto error");
-    }
+    ANO_DT_Send_Data(data_to_send, _cnt);
 }
 
 /*******************************************
@@ -571,10 +479,7 @@ void ANO_DT_Send_PID(uint8_t group, float p1_p, float p1_i, float p1_d, float p2
     }
 
     data_to_send[_cnt++] = sum;
-    if ((sendto(sockfd, data_to_send, _cnt, 0, (struct sockaddr *)&cliaddr, len)) < 0)
-    {
-        perror("sendto error");
-    }
+    ANO_DT_Send_Data(data_to_send, _cnt);
 }
 
 /*******************************************
@@ -622,10 +527,7 @@ void ANO_DT_Send_RCData(uint16_t thr, uint16_t yaw, uint16_t rol, uint16_t pit, 
         sum += data_to_send[i];
     }
     data_to_send[_cnt++] = sum;
-    if ((sendto(sockfd, data_to_send, _cnt, 0, (struct sockaddr *)&cliaddr, len)) < 0)
-    {
-        perror("sendto error");
-    }
+    ANO_DT_Send_Data(data_to_send, _cnt);
 }
 
 /*******************************************
@@ -662,10 +564,7 @@ void ANO_Data_Send_Voltage_Current(float volatge, float current)
         sum += data_to_send[i];
     }
     data_to_send[_cnt++] = sum;
-    if ((sendto(sockfd, data_to_send, _cnt, 0, (struct sockaddr *)&cliaddr, len)) < 0)
-    {
-        perror("sendto error");
-    }
+    ANO_DT_Send_Data(data_to_send, _cnt);
 }
 
 //---------------ÕâÀïÊÇ·Ö¸ô·û¡ı¡ı¡ı¡ı¡ı¡ı¡ı¡ı¡ı¡ı<ÒÔÏÂÎª·¢ËÍ ×Óº¯Êı>¡ı¡ı¡ı¡ı¡ı¡ı¡ı¡ı¡ı¡ıÕâÀïÊÇ·Ö¸ô·û------------------//
@@ -676,9 +575,10 @@ void ANO_Data_Send_Voltage_Current(float volatge, float current)
 * ·µ »Ø Öµ£ºnone
 * ×¢    Òâ£ºnone
 ********************************************/
+
 void ANO_SEND_StateMachine(void)
 {
-    static uint16_t ANO_Cnt = 0;
+    static uint8_t ANO_Cnt = 0;
 
     if (ANO_Cnt == 0)
     {
@@ -688,31 +588,31 @@ void ANO_SEND_StateMachine(void)
 
     if (ANO_Cnt == 1)
     {
-        //ANO_Data_Send_Status(Sensor.JY901.Euler.Roll, Sensor.JY901.Euler.Pitch, -Sensor.JY901.Euler.Yaw, Sensor.DepthSensor.Depth); //·¢ËÍ»ù±¾ĞÅÏ¢£¨Å·À­Èı½Ç¡¢¸ß¶È¡¢Ëø¶¨×´Ì¬£©¡¾µÚ¶ş×é¡¿
+        ANO_Data_Send_Status(rovInfo.jy901.roll, rovInfo.jy901.pitch, rovInfo.jy901.yaw, rovInfo.depthSensor.depth); //·¢ËÍ»ù±¾ĞÅÏ¢£¨Å·À­Èı½Ç¡¢¸ß¶È¡¢Ëø¶¨×´Ì¬£©¡¾µÚ¶ş×é¡¿
     }
 
     else if (ANO_Cnt == 2)
     { //·¢ËÍ´«¸ĞÆ÷Ô­Ê¼Êı×ÖÁ¿ (¼ÓËÙ¶È¡¢½ÇËÙ¶È¡¢´Å³¡)  ¡¾µÚÈı×é¡¿
-        /*ANO_DT_Send_Senser(Sensor.JY901.Acc.x, Sensor.JY901.Acc.y, Sensor.JY901.Acc.z,
-                           Sensor.JY901.Gyro.x, Sensor.JY901.Gyro.y, Sensor.JY901.Gyro.z,
-                           Sensor.JY901.Mag.x, Sensor.JY901.Mag.y, Sensor.JY901.Mag.z);*/
+        ANO_DT_Send_Senser(rovInfo.jy901.acc.x, rovInfo.jy901.acc.y, rovInfo.jy901.acc.z,
+                           rovInfo.jy901.gyro.x, rovInfo.jy901.gyro.y, rovInfo.jy901.gyro.z,
+                           rovInfo.jy901.mag.x, rovInfo.jy901.mag.y, rovInfo.jy901.mag.z);
     }
 
     else if (ANO_Cnt == 3)
     {
-        /*ANO_DT_Send_RCData(PropellerPower.leftUp + 1500, PropellerPower.rightUp + 1500,
-                           PropellerPower.leftDown + 1500, PropellerPower.rightDown + 1500,
-                           PropellerPower.leftMiddle + 1500, PropellerPower.rightMiddle + 1500,
+        /*ANO_DT_Send_RCData(propellerPower.leftUp + 1500, propellerPower.rightUp + 1500,
+                           propellerPower.leftDown + 1500, propellerPower.rightDown + 1500,
+                           propellerPower.leftMiddle + 1500, propellerPower.rightMiddle + 1500,
                            0, 0, 0, 0);*/
     }
     else if (ANO_Cnt == 4)
     {
-        //ANO_Data_Send_Voltage_Current(Sensor.PowerSource.Voltage, Sensor.PowerSource.Current);
+        ANO_Data_Send_Voltage_Current(rovInfo.powerSource.voltage, rovInfo.powerSource.current);
     }
 
     else if (ANO_Cnt == 5) //·¢ËÍ¸ß¶ÈÊı¾İ (ÆøÑ¹¼Æ¸ß¶È¡¢³¬Éù²¨¸ßµÍ)  ¡¾µÚÆß×é¡¿
     {
-        //ANO_DT_Send_High(Sensor.DepthSensor.PessureValue, 0); //·¢ËÍ¸ß¶ÈÊı¾İ (ÆøÑ¹¼Æ¸ß¶È¡¢³¬Éù²¨¸ßµÍ)
+        ANO_DT_Send_High(rovInfo.depthSensor.pressure, 0); //·¢ËÍ¸ß¶ÈÊı¾İ (ÆøÑ¹¼Æ¸ß¶È¡¢³¬Éù²¨¸ßµÍ)
     }
 
     else if (ANO_Cnt == 6                                                                                                                                                                   //·¢ËÍPIDÊı¾İ
@@ -806,7 +706,7 @@ void ANO_SEND_StateMachine(void)
                         0);
         ANO_Send_PID_Flag[5] = 0;
         ANO_Cnt = 0;
-        log_v("PID_Flash_Read -> success!");
+        log_i("PID_Flash_Read -> success!");
     }
 }
 
@@ -848,7 +748,7 @@ void Save_Or_Reset_PID_Parameter(void)
         PID_Parameter[7].i = Total_Controller.High_Position_Control.Ki;
         PID_Parameter[7].d = Total_Controller.High_Position_Control.Kd;
 
-        log_v("PID_Save_Flash -> Success!");
+        log_i("PID_Save_Flash -> Success!");
         //Save_PID_Parameter(); //±£´æ²ÎÊıÖÁFLASH
         Sort_PID_Flag = 0;
     }
@@ -892,7 +792,7 @@ void Save_Or_Reset_PID_Parameter(void)
         //Save_PID_Parameter(); //±£´æ²ÎÊıÖÁFLASH
 
         Sort_PID_Flag = 0;
-        log_v("PID_Reset_Flash -> Success!");
+        log_i("PID_Reset_Flash -> Success!");
         ANO_Send_PID_Flag[0] = 1; //»Ø¸´Ä¬ÈÏ²ÎÊıºó£¬½«¸üĞÂµÄÊı¾İ·¢ËÍÖÃµØÃæÕ¾
         ANO_Send_PID_Flag[1] = 1;
         ANO_Send_PID_Flag[2] = 1;
