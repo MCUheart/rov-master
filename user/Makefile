@@ -20,7 +20,7 @@ CFLAG=-Wall -g -I../applications -I../drivers -I../tools -I../lib/easylogger/inc
 #-L./lib : -L指示动态/静态链接库所在的目录，这里./lib即所在的目录
 #-l      : -l指示动态/静态链接库的名字，注意: 这里的库名字并不包括前缀(lib)和后缀(.a或.so)
 #$(SHARE) : 取SHARE变量对应的动态链接库链接选项--share
-LFLAG=-lwiringPi -lpthread -L../lib -lapplications -ldrivers -ltools -leasylogger -lm
+LFLAG=-lwiringPi -lpthread -L../lib -ltools -lapplications -ldrivers -leasylogger -lm
 
 #CC即编译链接命令gcc -o 用于编译或者链接动态库以及可执行程序
 CC=gcc -o

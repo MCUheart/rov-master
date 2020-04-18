@@ -47,12 +47,13 @@ void remote_control_data_analysis(uint8_t *buff, cmd_t *cmd) //控制数据解�
 
     if (buff[0] == 0xAA && buff[1] == 0x55) // 检测包头
     {
-        if (buff[2] == RECV_DATA_LEN) // 检测数据包长度(此判断暂无作用，用于后续 可变长度数据包)
+        // 数据包长度(不包括包头2位，数据包长度1位，校验位1位 = 4)
+        if (buff[2] == RECV_DATA_LEN - 4) // 检测数据包长度(此判断暂无作用，用于后续升级为 可变长度数据包)
         {
             // 获取校验位
             rxCheck = calculate_check_sum(buff, RECV_DATA_LEN - 1);
 
-            if (rxCheck == buff[RECV_DATA_LEN]) // 校验位核对
+            if (rxCheck == buff[RECV_DATA_LEN - 1]) // 校验位核对
             {
                 /* 开关类 */
                 cmd->depth_lock = buff[3]; // 深度锁定

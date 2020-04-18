@@ -1,7 +1,7 @@
 #ifndef __MS5837_H_
 #define __MS5837_H_
 
-#include "../user/DataType.h"
+#include "../user/config.h"
 
 #define MS5837_I2C_DEV "/dev/i2c-1" // MS5837 使用的 I2C设备
 /* MS5837-30BA address is 1110110x (write: x=0, read: x=1). */

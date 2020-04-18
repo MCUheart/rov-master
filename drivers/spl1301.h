@@ -5,7 +5,7 @@
 #ifndef SPL1301_H
 #define SPL1301_H
 
-#include "../user/DataType.h"
+#include "../user/config.h"
 
 #define SPL1301_I2C_DEV "/dev/i2c-1" // SPL1301 使用的 I2C设备
 #define SPL1301_I2C_ADDR 0x77        // SPL1301 I2C 地址 (datasheet P9)

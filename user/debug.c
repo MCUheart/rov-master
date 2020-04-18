@@ -1,3 +1,8 @@
+/**
+ * @desc: 调试线程
+ */
+#define LOG_TAG "debug"
+
 #include "../tools/ano_link.h"
 #include <arpa/inet.h>
 #include <elog.h>
@@ -63,9 +68,9 @@ void *ano_send_thread(void *arg)
 }
 
 /**
-  * @brief  ANO匿名地面站数据通信服务器线程初始化
+  * @brief  ANO匿名地面站数据通信服务器线程
   */
-int anoUdp_server_thread_init(void)
+static void *server_thread(void *arg)
 {
     char mesg[50];
     pthread_t send_tid;
@@ -96,5 +101,19 @@ int anoUdp_server_thread_init(void)
 
     pthread_create(&recv_tid, NULL, ano_recv_thread, NULL);
     pthread_detach(recv_tid);
+
+    return 0;
+}
+
+/**
+  * @brief  ANO匿名地面站数据通信服务器线程初始化
+  */
+int anoUdp_server_thread_init(void)
+{
+    pthread_t server_tid;
+
+    pthread_create(&server_tid, NULL, server_thread, NULL);
+    pthread_detach(server_tid);
+
     return 0;
 }

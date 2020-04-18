@@ -1,7 +1,7 @@
 #ifndef __SENSOR_H_
 #define __SENSOR_H_
 
-#include "../user/DataType.h"
+#include "../user/config.h"
 
 #include "../drivers/ads1118.h"
 #include "../drivers/jy901.h"

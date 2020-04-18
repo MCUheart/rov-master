@@ -38,7 +38,7 @@
 float get_cpu_temp(void)
 {
     float temp;
-    static FILE *fp;
+    static FILE *fp = NULL;
 
     // thermal_zone0 表示 CPU0
     fp = fopen(TEMP_PATH, "r");
@@ -70,7 +70,7 @@ uint32_t get_cpuTotalTime(cpuInfo_t *cpuInfo)
  */
 void get_cpuInfo(cpuInfo_t *cpuInfo)
 {
-    FILE *fp;
+    static FILE *fp = NULL;
 
     fp = fopen("/proc/stat", "r");
     if (NULL == fp) // 防止野指针访问，从而产生段错误
@@ -126,7 +126,7 @@ float get_cpu_usage(void)
  */
 void get_memory_status(memory_t *memory)
 {
-    FILE *fp;
+    static FILE *fp = NULL;
     char name1[20]; // 用于保存 内存名称(eg. total/available)
     char name2[20]; // 用于保存 单位    (eg. kB)
 
@@ -149,7 +149,7 @@ void get_memory_status(memory_t *memory)
  */
 void get_disk_status(disk_t *disk)
 {
-    FILE *fp;
+    static FILE *fp = NULL;
     uint32_t b, c;
     // 用于保存各个文件系统的 总容量大小、已使用大小
     float disk_total = 0, disk_used = 0;
@@ -185,8 +185,7 @@ void get_disk_status(disk_t *disk)
  */
 void get_net_data(netData_t *net_data, char *eth)
 {
-
-    FILE *fp;
+    static FILE *fp = NULL;
     char name[20];
     uint64_t rb, rp, re, rd, rfi, rfr, rc, rm,
         tb, tp, te, td, tfi, tfr, tc, tm;

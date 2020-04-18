@@ -1,37 +1,34 @@
 /*
  * 匿名地面站数据传输
  *
- * Attention: 接收只需要调用 -> ANO_DT_Data_Receive_Prepare(uint8_t data);
+ * Attention: 接收只需要调用 -> ANO_DT_Data_Receive_Prepare(uint8_t data); 或者 void ANO_DT_Data_Receive_Anl(uint8_t *data_buf, uint8_t num);
  *【统一接口】 发送只需要调用 -> ANO_SEND_StateMachine(void);
  *            保存参数需调用 -> void Save_Or_Reset_PID_Parameter(void);
  */
+
 #include "ano_link.h"
 #include "../applications/PID.h"
 #include "../applications/sensor.h"
 #include "../user/debug.h"
+
 #include <elog.h>
 #include <stdio.h>
+
 #define BYTE0(dwTemp) (*((char *)(&dwTemp) + 0))
 #define BYTE1(dwTemp) (*((char *)(&dwTemp) + 1))
 #define BYTE2(dwTemp) (*((char *)(&dwTemp) + 2))
 #define BYTE3(dwTemp) (*((char *)(&dwTemp) + 3))
 
-#define HardwareType 0.00 //硬件种类  00为其他硬件版本
-#define HardwareVER 1.00  //硬件版本
-#define SoftwareVER 1.50  //软件版本
-#define ProtocolVER 1     //协议版本
-#define BootloaderVER 1   //Bootloader版本
+#define HardwareType 0.00 // 硬件种类  00为其他硬件版本
+#define HardwareVER 1.00  // 硬件版本
+#define SoftwareVER 1.00  // 软件版本
+#define ProtocolVER 1     // 协议版本
+#define BootloaderVER 1   // Bootloader版本
 
-#define PID_USE_NUM 8
-
-Vector3f_pid PID_Parameter[PID_USE_NUM] = {0};
+Vector3f_pid PID_Parameter[8] = {0};
 
 uint8_t data_to_send[50];           //ANO地面站发送数据缓冲
 uint8_t ANO_Send_PID_Flag[6] = {0}; //PID发送标志位
-uint8_t Sort_PID_Cnt = 0;
-uint8_t Sort_PID_Flag = 0; //PID状态标志位：1存FLASH  2复位原始数据
-
-//---------------这里是分隔符↓↓↓↓↓↓↓↓↓↓<以下为接收 函数>↓↓↓↓↓↓↓↓↓↓这里是分隔符------------------//
 
 //Send_Data函数是协议中所有发送数据功能使用到的发送函数
 //移植时，用户应根据自身应用的情况，根据使用的通信方式，实现此函数
@@ -139,15 +136,12 @@ void ANO_DT_Data_Receive_Anl(uint8_t *data_buf, uint8_t num)
     {
         if (*(data_buf + 4) == 0x01)
         {
-            ;
         }
         if (*(data_buf + 4) == 0x02)
         {
-            ;
         }
         if (*(data_buf + 4) == 0x03)
         {
-            ;
         }
     }
 
@@ -164,15 +158,15 @@ void ANO_DT_Data_Receive_Anl(uint8_t *data_buf, uint8_t num)
         }
         if (*(data_buf + 4) == 0x02) //读取飞行模式设置请求
         {
-            ;
         }
         if (*(data_buf + 4) == 0xA0) //读取下位机版本信息
         {
-            ;
         }
         if (*(data_buf + 4) == 0xA1) //恢复默认参数
         {
-            Sort_PID_Flag = 2;
+            Total_PID_Init();   // 将PID参数重置为参数Control_Unit表里面参数
+            write_pid_params(); // 写入PID参数
+            log_i("reset pid params -> Success!");
         }
     }
 
@@ -223,9 +217,9 @@ void ANO_DT_Data_Receive_Anl(uint8_t *data_buf, uint8_t num)
     }
     if (*(data_buf + 2) == 0x15) //接收PID6  【改为推进器方向标志】
     {
+        write_pid_params(); // 写入PID参数
+        log_i("write pid params -> success!");
         ANO_DT_Send_Check(*(data_buf + 2), sum);
-        Sort_PID_Cnt++;
-        Sort_PID_Flag = 1;
     }
 }
 
@@ -706,103 +700,6 @@ void ANO_SEND_StateMachine(void)
                         0);
         ANO_Send_PID_Flag[5] = 0;
         ANO_Cnt = 0;
-        log_i("PID_Flash_Read -> success!");
-    }
-}
-
-//---------------这里是分隔符↓↓↓↓↓↓↓↓↓↓<以下为发送 函数>↓↓↓↓↓↓↓↓↓↓这里是分隔符------------------//
-
-void Save_Or_Reset_PID_Parameter(void)
-{
-    if (Sort_PID_Flag == 1) //将地面站设置PID参数写入Flash
-    {
-        PID_Parameter[0].p = Total_Controller.Roll_Gyro_Control.Kp;
-        PID_Parameter[0].i = Total_Controller.Roll_Gyro_Control.Ki;
-        PID_Parameter[0].d = Total_Controller.Roll_Gyro_Control.Kd;
-
-        PID_Parameter[1].p = Total_Controller.Pitch_Gyro_Control.Kp;
-        PID_Parameter[1].i = Total_Controller.Pitch_Gyro_Control.Ki;
-        PID_Parameter[1].d = Total_Controller.Pitch_Gyro_Control.Kd;
-
-        PID_Parameter[2].p = Total_Controller.Yaw_Gyro_Control.Kp;
-        PID_Parameter[2].i = Total_Controller.Yaw_Gyro_Control.Ki;
-        PID_Parameter[2].d = Total_Controller.Yaw_Gyro_Control.Kd;
-
-        PID_Parameter[3].p = Total_Controller.Roll_Angle_Control.Kp;
-        PID_Parameter[3].i = Total_Controller.Roll_Angle_Control.Ki;
-        PID_Parameter[3].d = Total_Controller.Roll_Angle_Control.Kd;
-
-        PID_Parameter[4].p = Total_Controller.Pitch_Angle_Control.Kp;
-        PID_Parameter[4].i = Total_Controller.Pitch_Angle_Control.Ki;
-        PID_Parameter[4].d = Total_Controller.Pitch_Angle_Control.Kd;
-
-        PID_Parameter[5].p = Total_Controller.Yaw_Angle_Control.Kp;
-        PID_Parameter[5].i = Total_Controller.Yaw_Angle_Control.Ki;
-        PID_Parameter[5].d = Total_Controller.Yaw_Angle_Control.Kd;
-
-        PID_Parameter[6].p = Total_Controller.High_Speed_Control.Kp;
-        PID_Parameter[6].i = Total_Controller.High_Speed_Control.Ki;
-        PID_Parameter[6].d = Total_Controller.High_Speed_Control.Kd;
-
-        PID_Parameter[7].p = Total_Controller.High_Position_Control.Kp;
-        PID_Parameter[7].i = Total_Controller.High_Position_Control.Ki;
-        PID_Parameter[7].d = Total_Controller.High_Position_Control.Kd;
-
-        log_i("PID_Save_Flash -> Success!");
-        //Save_PID_Parameter(); //保存参数至FLASH
-        Sort_PID_Flag = 0;
-    }
-    else if (Sort_PID_Flag == 2) //将复位PID参数，并写入Flash
-    {
-
-        Total_PID_Init(); //将PID参数重置为参数Control_Unit表里面参数
-
-        PID_Parameter[0].p = Total_Controller.Roll_Gyro_Control.Kp;
-        PID_Parameter[0].i = Total_Controller.Roll_Gyro_Control.Ki;
-        PID_Parameter[0].d = Total_Controller.Roll_Gyro_Control.Kd;
-
-        PID_Parameter[1].p = Total_Controller.Pitch_Gyro_Control.Kp;
-        PID_Parameter[1].i = Total_Controller.Pitch_Gyro_Control.Ki;
-        PID_Parameter[1].d = Total_Controller.Pitch_Gyro_Control.Kd;
-
-        PID_Parameter[2].p = Total_Controller.Yaw_Gyro_Control.Kp;
-        PID_Parameter[2].i = Total_Controller.Yaw_Gyro_Control.Ki;
-        PID_Parameter[2].d = Total_Controller.Yaw_Gyro_Control.Kd;
-
-        PID_Parameter[3].p = Total_Controller.Roll_Angle_Control.Kp;
-        PID_Parameter[3].i = Total_Controller.Roll_Angle_Control.Ki;
-        PID_Parameter[3].d = Total_Controller.Roll_Angle_Control.Kd;
-
-        PID_Parameter[4].p = Total_Controller.Pitch_Angle_Control.Kp;
-        PID_Parameter[4].i = Total_Controller.Pitch_Angle_Control.Ki;
-        PID_Parameter[4].d = Total_Controller.Pitch_Angle_Control.Kd;
-
-        PID_Parameter[5].p = Total_Controller.Yaw_Angle_Control.Kp;
-        PID_Parameter[5].i = Total_Controller.Yaw_Angle_Control.Ki;
-        PID_Parameter[5].d = Total_Controller.Yaw_Angle_Control.Kd;
-
-        PID_Parameter[6].p = Total_Controller.High_Speed_Control.Kp;
-        PID_Parameter[6].i = Total_Controller.High_Speed_Control.Ki;
-        PID_Parameter[6].d = Total_Controller.High_Speed_Control.Kd;
-
-        PID_Parameter[7].p = Total_Controller.High_Position_Control.Kp;
-        PID_Parameter[7].i = Total_Controller.High_Position_Control.Ki;
-        PID_Parameter[7].d = Total_Controller.High_Position_Control.Kd;
-
-        //Save_PID_Parameter(); //保存参数至FLASH
-
-        Sort_PID_Flag = 0;
-        log_i("PID_Reset_Flash -> Success!");
-        ANO_Send_PID_Flag[0] = 1; //回复默认参数后，将更新的数据发送置地面站
-        ANO_Send_PID_Flag[1] = 1;
-        ANO_Send_PID_Flag[2] = 1;
-        ANO_Send_PID_Flag[3] = 1;
-        ANO_Send_PID_Flag[4] = 1;
-        ANO_Send_PID_Flag[5] = 1;
-    }
-
-    else
-    {
-        return;
+        log_i("read pid params -> success!");
     }
 }

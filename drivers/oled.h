@@ -2,7 +2,7 @@
 #ifndef __OLED_H_
 #define __OLED_H_
 
-#include "../user/DataType.h"
+#include "../user/config.h"
 #include "oledfont.h"
 
 #define I2C_OLED_DEV "/dev/i2c-2" // OLED 使用的 I2C接口
@@ -17,8 +17,9 @@ void OLED_Display_On(void);
 void OLED_Display_Off(void);
 void OLED_Refresh_Gram(void);
 
-// OLED应用函数
+// OLED初始化
 int oledSetup(void);
+// OLED应用函数
 void OLED_Clear(void);
 
 void OLED_DrawPoint(uint8_t x, uint8_t y, uint8_t t);

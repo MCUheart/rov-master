@@ -2,7 +2,7 @@
 #ifndef __JY901_H_
 #define __JY901_H_
 
-#include "../user/DataType.h"
+#include "../user/config.h"
 
 #define JY901_UART_DEV "/dev/ttyS2" // JY901 使用的 UART 设备
 #define JY901_UART_BAUD 9600        // JY901 UART 波特率
@@ -196,8 +196,9 @@ typedef struct
 
 } jy901_t; /* JY901解算后数据结构体 */
 
+// JY901初始化
 int jy901Setup(void);
-
+// JY901数据处理
 void copeJY901_data(uint8_t data, jy901_t *jy901);
 
 #endif

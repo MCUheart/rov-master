@@ -1,17 +1,17 @@
 #ifndef __RC_DATA_H_
 #define __RC_DATA_H_
 
-#include "../user/DataType.h"
+#include "../user/config.h"
 
 /*
  * 接收数据包长度【包含包头、长度位、校验位】
- * 包头：2 数据长度位: 1 包体：16 校验字：1
+ * 包头：2, 数据长度位: 1, 包体：16, 校验字：1
 */
 #define RECV_DATA_LEN 20
 
 /*
  * 返回数据包长度【包含包头、长度位、校验位】
- * 包头：1 数据长度位: 1 包体：22 校验字：1
+ * 包头：2, 数据长度位: 1, 包体：22, 校验字：1
 */
 #define RETURN_DATA_LEN 26
 

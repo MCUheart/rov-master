@@ -1,5 +1,5 @@
-/*
- * @Description: 各个传感器线程 (深度传感器、九轴、CPU 设备数据解析并获取)
+/**
+ * @desc: 各个传感器线程 (深度传感器、九轴、CPU 设备数据解析并获取)
  */
 
 #define LOG_TAG "sensor"

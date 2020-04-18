@@ -1,40 +1,36 @@
-/*
- * @Description: 滤波函数
- * @Author: chenxi
- * @Date: 2020-02-08 21:46:49
- * @LastEditTime : 2020-02-10 17:11:19
- * @LastEditors  : chenxi
+/**
+ * @desc: 滤波函数
  */
 
-#include <math.h>
 #include "filter.h"
+#include <math.h>
 
 /* 冒泡 中值滤波  */
-uint32_t Bubble_Filter(uint32_t *value)
+uint32_t bubble_filter(uint32_t *value)
 {
-	uint8_t i, j, swapFlag; //交换标志位
-	uint32_t res = 0;		  //reserve 暂存
-	uint32_t med = 0;		  //中值
+    uint8_t i, j, swapFlag; //交换标志位
+    uint32_t res = 0;       //reserve 暂存
+    uint32_t med = 0;       //中值
 
-	for (j = 0; j < 10 - 1; j++)
-	{
-		swapFlag = 0; //每一个大循环检验
-		for (i = 0; i < 9 - j; i++)
-		{
-			if (value[i] > value[i + 1])
-			{ //>升序   <降序
-				res = value[i];
-				value[i] = value[i + 1];
-				value[i + 1] = res;
+    for (j = 0; j < 10 - 1; j++)
+    {
+        swapFlag = 0; //每一个大循环检验
+        for (i = 0; i < 9 - j; i++)
+        {
+            if (value[i] > value[i + 1])
+            { //>升序   <降序
+                res = value[i];
+                value[i] = value[i + 1];
+                value[i + 1] = res;
 
-				swapFlag = 1; //若交换置1
-			}
-		}
-		if (0 == swapFlag)
-			break; //未发生交换，则提前结束
-	}
-	med = (*(value + 4) + *(value + 5) + *(value + 6)) / 3; //中间平均值
-	return med;
+                swapFlag = 1; //若交换置1
+            }
+        }
+        if (0 == swapFlag)
+            break; //未发生交换，则提前结束
+    }
+    med = (*(value + 4) + *(value + 5) + *(value + 6)) / 3; //中间平均值
+    return med;
 }
 
 /*
@@ -43,18 +39,18 @@ q,r的值需要我们试出来，讲白了就是(买的破温度计有多破，以及你的超人力有多强)
 q参数调整滤波后的曲线与实测曲线的相近程度，q越大越接近。
 r参数调滤波后的曲线平滑程度，r越大越平滑。 
 */
-float KalmanFilter(float *Original_Data)
+float kalman_filter(float *Original_Data)
 {
-	static float prevData = 0;
-	static float p = 10, q = 0.0001, r = 0.001, kGain = 0;
+    static float prevData = 0;
+    static float p = 10, q = 0.0001, r = 0.001, kGain = 0;
 
-	p = p + q;
-	kGain = p / (p + r);
+    p = p + q;
+    kGain = p / (p + r);
 
-	*Original_Data = prevData + (kGain * (*Original_Data - prevData));
-	p = (1 - kGain) * p;
+    *Original_Data = prevData + (kGain * (*Original_Data - prevData));
+    p = (1 - kGain) * p;
 
-	prevData = *Original_Data;
+    prevData = *Original_Data;
 
-	return *Original_Data;
+    return *Original_Data;
 }

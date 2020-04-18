@@ -9,7 +9,7 @@
 #ifndef __ADC_CONVERT_H_
 #define __ADC_CONVERT_H_
 
-#include "../user/DataType.h"
+#include "../user/config.h"
 
 /* ads1118 内部晶振频率 */
 #define ADS1118_OSC_CLK 1000000
@@ -75,7 +75,7 @@ typedef struct
 
 } ads1118_t;
 
-//初始化ADC
+// ADS1118初始化
 int ads1118Setup(const int pinBase);
 
 #endif

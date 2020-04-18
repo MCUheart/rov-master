@@ -2,7 +2,7 @@
 #ifndef __IO_DEVICES_H__
 #define __IO_DEVICES_H__
 
-#include "../user/DataType.h"
+#include "../user/config.h"
 
 #include <wiringPi.h>
 

@@ -9,7 +9,7 @@
 #ifndef __PWM_H__
 #define __PWM_H__
 
-#include "../user/DataType.h"
+#include "../user/config.h"
 
 #define PCA9685_I2C_DEV "/dev/i2c-0" // PCA9685 使用的 I2C设备
 #define PCA9685_I2C_ADDR 0x40        // 将A0-A5全部接地，则其器件地址为:0x40
@@ -44,14 +44,14 @@
 #define DISABLE_RESTART 0b0
 #define ENABLE_RESTART 0b1
 
+// PCA9685初始化
 extern int pca9685Setup(const int pinBase, float freq /* = 50*/);
-
+// PCA9685设置频率
 extern void pca9685PWMSetFreq(int fd, float freq);
+// PCA9685重置所有输出
 extern void pca9685PWMReset(int fd);
+// PCA9685写入PWM
 extern void pca9685PWMWrite(int fd, int pin, int on, int off);
-extern void pca9685PWMRead(int fd, int pin, int *on, int *off);
 
-extern void pca9685FullOn(int fd, int pin, int tf);
 extern void pca9685FullOff(int fd, int pin, int tf);
-
 #endif

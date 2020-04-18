@@ -3,7 +3,7 @@
 #ifndef __PWMDEVICES_H_
 #define __PWMDEVICES_H_
 
-#include "../user/DataType.h"
+#include "../user/config.h"
 
 // 简单 PWM 设备对应 PWM输出通道
 #define YUNTAI_CHANNEL 6
