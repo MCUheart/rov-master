@@ -1,14 +1,9 @@
 #ifndef __INIT_H_
 #define __INIT_H_
 
-#include "DataType.h"
+#include "config.h"
 
-#define ROV_MASTER_VERSION "1.0.0"
-
-
-
+// 系统初始化
 int system_init(void);
 
-
 #endif
-
