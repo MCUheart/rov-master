@@ -18,8 +18,6 @@
 #include <wiringPi.h>
 #include <wiringPiI2C.h>
 
-static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-
 static ms5837_t ms5837_dev;
 static ms5837_t *ms5837 = &ms5837_dev;
 
@@ -110,9 +108,7 @@ int ms5837_get_calib_param(int fd)
  */
 uint32_t ms5837_get_conversion(int fd, uint8_t command)
 {
-    static uint8_t temp[10];
-    uint8_t low;
-    uint32_t conversion;
+    static uint8_t temp[3];
 
     // 1.先写入转换命令(即指定转换传感器及精度) (datasheet P11)
     wiringPiI2CWrite(fd, command);
@@ -120,31 +116,15 @@ uint32_t ms5837_get_conversion(int fd, uint8_t command)
     /* 2.延时等待转换完成  
 	 * eg.读取8196精度时，等待时间必须大于 datasheet P2页中的18.08毫秒，否则无法获取数据
 	 */
-    delay(50);
-    //wiringPiI2CWrite(fd, MS583703BA_ADC_RD);
-    //conversion = wiringPiI2CReadReg16(fd, MS583703BA_ADC_RD);
-    //low = wiringPiI2CReadReg8(fd, MS583703BA_ADC_RD);
+    delay(30);
 
-    //printf("conversion 0x%x %d\n",conversion, conversion);
-    //conversion = (conversion << 8) | (conversion >> 8);
-    //printf("2 conversion: 0x%x %d\n",conversion, conversion);
-    // 3.在写入 ADC read命令
-    pthread_mutex_lock(&mutex);
-    //wiringPiI2CWrite(fd, MS583703BA_ADC_RD);
-    wiringPiI2CReadRegBlock(fd, MS583703BA_ADC_RD, temp);
+    // 3.写入 ADC read读取命令(让器件准备数据)
+    wiringPiI2CWrite(fd, MS583703BA_ADC_RD);
 
-    // 4.读取 24bit的转换数据 高位在前
-    /*temp[0] = wiringPiI2CRead(fd); // bit 23-16
-	temp[1] = wiringPiI2CRead(fd); // bit 8-15
-	temp[2] = wiringPiI2CRead(fd); // bit 0-7*/
+    // 4.读取 24bit(3个字节)的转换数据 高位在前
+    read(fd, temp, 3); // 由于wiringpi没有提供I2C读取多个字节，因此使用read代替
 
-    pthread_mutex_unlock(&mutex);
-
-    printf("temp: 0x%x 0x%x 0x%x\n", temp[0], temp[1], temp[2]);
-
-    conversion = ((uint32_t)temp[0] << 16) | ((uint32_t)temp[1] << 8) | ((uint32_t)temp[2]);
-    //printf("2 conversion: 0x%x %d\n",conversion, conversion);
-    return conversion;
+    return ((uint32_t)temp[0] << 16) | ((uint32_t)temp[1] << 8) | ((uint32_t)temp[2]);
 }
 
 /**
@@ -154,38 +134,38 @@ uint32_t ms5837_get_conversion(int fd, uint8_t command)
 void ms5837_cal_raw_temperature(int fd)
 {
     // 获取原始温度数字量
-    ms5837->D2_Temp = ms5837_get_conversion(fd, MS583703BA_D2_OSR_2048);
+    ms5837->D2_Temp = ms5837_get_conversion(fd, MS583703BA_D2_OSR_8192);
     // 实际温度与参考温度之差 (公式见datasheet P7)
-    ms5837->dT = ms5837->D2_Temp - (((uint32_t)ms5837->c[5]) * 256);
+    ms5837->dT = (int32_t)ms5837->D2_Temp - ((int32_t)ms5837->c[5] << 8); // *256
     // 实际的温度
-    ms5837->TEMP = 2000 + ms5837->dT * ((uint32_t)ms5837->c[6]) / 8388608; // 8388608 = 2^23,这里不采用右移23位，因为该数据为有符号
+    ms5837->TEMP = 2000 + ((int64_t)ms5837->dT * (int64_t)ms5837->c[6] >> 23); // 8388608 = 2^23,这里不采用右移23位，因为该数据为有符号
 }
 
 /**
- * @brief  获取并计算压力值
- *  并进行温度补偿
+ * @brief  获取并计算压力值 并进行温度补偿
+ *   除法采用移位为了提高计算效率
+ *   计算中的(int64_t)强制类型转换为了防止计算数据溢出
  */
 void ms5837_cal_pressure(int fd)
 {
     int64_t Ti, OFFi, SENSi;
-    int32_t dT_squ; // dT的乘方
+    int64_t dT_squ; // dT的乘方
     uint32_t temp_minus_squ, temp_plus_squ;
 
     // 获取原始压力数字量
     ms5837->D1_Pres = ms5837_get_conversion(fd, MS583703BA_D1_OSR_8192);
     // 实际温度偏移
-    ms5837->OFF = (int64_t)ms5837->c[2] * 65536 + ((int64_t)ms5837->c[4] * ms5837->dT) / 128;
+    ms5837->OFF = ((int64_t)ms5837->c[2] << 16) + (((int64_t)(ms5837->c[4] * ms5837->dT)) >> 7);
     // 实际温度灵敏度
-    ms5837->SENS = (int64_t)ms5837->c[1] * 32768 + ((int64_t)ms5837->c[3] * ms5837->dT) / 256;
+    ms5837->SENS = ((int64_t)ms5837->c[1] << 15) + (((int64_t)(ms5837->c[3] * ms5837->dT)) >> 8);
 
-    dT_squ = (ms5837->dT * ms5837->dT);                             // dT的2次方
+    dT_squ = ((int64_t)ms5837->dT * (int64_t)ms5837->dT);           // dT的2次方
     temp_minus_squ = (2000 - ms5837->TEMP) * (2000 - ms5837->TEMP); // 温度差的2次方
 
     /* 对温度和压力进行二阶修正 (datasheet P8) */
     if (ms5837->TEMP < 2000) // 低温情况:低于20℃时
     {
-        /* TODO  测试后：0x200000000 改为右移多少bit，提高效率 */
-        Ti = 3 * dT_squ / 0x200000000;
+        Ti = (3 * dT_squ) >> 33;
         OFFi = 3 * temp_minus_squ / 2;
         SENSi = 5 * temp_minus_squ / 8;
 
@@ -198,22 +178,20 @@ void ms5837_cal_pressure(int fd)
     }
     else // 高温情况:高于20℃时
     {
-        Ti = 2 * dT_squ / 0x2000000000;
-        OFFi = 1 * temp_minus_squ / 16;
+        Ti = (2 * dT_squ) >> 37;
+        OFFi = temp_minus_squ >> 4;
         SENSi = 0;
     }
     ms5837->OFF -= OFFi;
     ms5837->SENS -= SENSi;
 
     // 温度补偿后的压力值
-    ms5837->P = (ms5837->SENS / 0x200000 - ms5837->OFF) / 0x1000;
+    ms5837->P = (((ms5837->D1_Pres * ms5837->SENS) >> 21) - ms5837->OFF) >> 13;
 
     // 实际温度值
-    ms5837->temperature = (ms5837->TEMP - Ti) / 100;
+    ms5837->temperature = (float)(ms5837->TEMP - Ti) / 100;
     // 实际压力值
-    ms5837->pressure = ms5837->P / 10;
-    //printf("temperature %.2f\n",ms5837->temperature);
-    //printf("pressure    %.2f\n",ms5837->pressure);
+    ms5837->pressure = (float)ms5837->P / 10;
 }
 
 //------------------------------------------------------------------------------------------------------------------
@@ -240,7 +218,7 @@ static int myDigitalRead(struct wiringPiNodeStruct *node, int pin)
     // 因此，获取温度时，不再进行数据计算，直接返回温度数据，避免浪费计算资源
     if (TEMPERATURE_SENSOR == channel)
     {
-        return ms5837->temperature;
+        return ms5837->temperature * 100; // 扩大100倍，方便int类型传输
     }
 
     ms5837_cal_raw_temperature(fd);
@@ -248,7 +226,7 @@ static int myDigitalRead(struct wiringPiNodeStruct *node, int pin)
 
     if (PRESSURE_SENSOR == channel)
     {
-        return ms5837->pressure;
+        return ms5837->pressure * 100;
     }
 
     log_e("ms5837 channel range in [0, 1]");
@@ -269,6 +247,7 @@ int ms5837Setup(const int pinBase)
     if ((fd = wiringPiI2CSetupInterface(MS5837_I2C_DEV, MS583703BA_I2C_ADDR)) < 0)
         return -1;
 
+    delay(50);
     /* 检测是否存在 ms5837 器件
      * 写入复位，如果写入失败，代表不存在 MS5837，或者器件地址错误
 	 * 复位的目的：复位才可读取校准数据 (datasheet P10) 
