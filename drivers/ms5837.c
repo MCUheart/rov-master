@@ -192,6 +192,7 @@ void ms5837_cal_pressure(int fd)
     ms5837->temperature = (float)(ms5837->TEMP - Ti) / 100;
     // 实际压力值
     ms5837->pressure = (float)ms5837->P / 10;
+    printf("pressure: %f  %.2f", ms5837->pressure, ms5837->temperature);
 }
 
 //------------------------------------------------------------------------------------------------------------------
@@ -202,6 +203,8 @@ void ms5837_cal_pressure(int fd)
 
 /**
   * @brief  ms5837 根据引脚转换为通道获取相应数值
+  *  返回的压力值单位为 Pa
+  *  返回的温度值单位为 摄氏度的100倍
   */
 static int myDigitalRead(struct wiringPiNodeStruct *node, int pin)
 {
@@ -218,7 +221,7 @@ static int myDigitalRead(struct wiringPiNodeStruct *node, int pin)
     // 因此，获取温度时，不再进行数据计算，直接返回温度数据，避免浪费计算资源
     if (TEMPERATURE_SENSOR == channel)
     {
-        return ms5837->temperature * 100; // 扩大100倍，方便int类型传输
+        return (int)(ms5837->temperature * 100); // 扩大100倍，方便int类型传输
     }
 
     ms5837_cal_raw_temperature(fd);
@@ -226,7 +229,8 @@ static int myDigitalRead(struct wiringPiNodeStruct *node, int pin)
 
     if (PRESSURE_SENSOR == channel)
     {
-        return ms5837->pressure * 100;
+        // 由于MS5837读取到的压力值单位为mbar(1mbar = 100Pa，因此*100)
+        return (int)(ms5837->pressure * 100);
     }
 
     log_e("ms5837 channel range in [0, 1]");

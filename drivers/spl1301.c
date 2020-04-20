@@ -297,6 +297,8 @@ float get_spl1301_pressure(void)
 
 /**
   * @brief  spl1301 根据引脚转换为通道获取相应数值
+  *  返回的压力值单位为 Pa
+  *  返回的温度值单位为 摄氏度的100倍
   */
 static int myDigitalRead(struct wiringPiNodeStruct *node, int pin)
 {
@@ -313,11 +315,11 @@ static int myDigitalRead(struct wiringPiNodeStruct *node, int pin)
         spl1301_get_raw_pressure(fd);
         // TODO 此处是否需要延时，待测试
         /* 再根据内部ram定标数据进行转换 */
-        return get_spl1301_pressure();
+        return get_spl1301_pressure(); // 单位为 Pa
     }
     else if (TEMPERATURE_SENSOR == channel)
     {
-        return get_spl1301_temperature();
+        return get_spl1301_temperature() * 100; // 扩大100倍，方便int类型传输
     }
 
     log_e("spl1301 channel range in [0, 1]");
@@ -341,6 +343,7 @@ int spl1301Setup(const int pinBase)
     if (fd < 0)
         return -1;
 
+    delay(50);
     /* 检测是否存在 spl1301 器件
      * 小于0代表读取失败，代表不存在该 SPL1301 器件，或者器件地址错误
     */
