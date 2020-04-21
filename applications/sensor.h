@@ -12,13 +12,13 @@
 /* 深度传感器设备描述符 */
 typedef struct
 {
-    int pin;             // 引脚
-    char *name;          // 深度传感器名称
-    float depth;         // 实际深度 (单位 cm)
-    float pressure;      // 压力值
-    float temperature;   // 水温     (单位 ℃)
-    float init_pressure; // 初始化压力值
-    void (*handle)(int); // 对应深度传感器处理函数 (参数为 pin)
+    int pin;               // wiringpi node的编号
+    char *name;            // 深度传感器名称
+    float depth;           // 实际深度 (单位 cm)
+    float temperature;     // 水温     (单位 ℃)
+    int32_t pressure;      // 压力值
+    int32_t last_pressure; // 上次压力值
+    int32_t init_pressure; // 初始化压力值
 
 } depthSensor_t;
 

@@ -5,7 +5,7 @@
 #define LOG_TAG "sensor"
 
 #include "sensor.h"
-
+#include "ioDevices.h"
 #include <elog.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -14,7 +14,7 @@
 #include <wiringPi.h>
 #include <wiringSerial.h>
 
-#define ADS1118_PIN_BASE 500
+#define ADS1118_PIN_BASE 500 // wiringpi node编号
 #define DEPTH_SENSOR_PIN_BASE 360
 
 rovInfo_t rovInfo;
@@ -22,7 +22,8 @@ rovInfo_t rovInfo;
 static jy901_t *jy901 = &rovInfo.jy901;
 static powerSource_t *powerSource = &rovInfo.powerSource;
 static depthSensor_t *depthSensor = &rovInfo.depthSensor;
-
+static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+int depthSensor_detect(int pin);
 /*******************************************************************************************************************/
 //
 // 线程
@@ -69,90 +70,83 @@ void *jy901_thread(void *arg)
 }
 
 /**
- * @brief  ms5837深度传感器 处理函数
- */
-static void ms5837_handle(int pin)
-{
-    // TODO 待测试
-    depthSensor->depth =
-        (depthSensor->pressure - depthSensor->init_pressure) / 1.37f;
-
-    printf("ms5837 depth: %.2f\n", depthSensor->depth);
-    printf("init_pressure: %.2f\n", depthSensor->init_pressure);
-    printf("pressure: %.2f\n", depthSensor->pressure);
-}
-
-/**
- * @brief  spl1301深度传感器 处理函数
- */
-static void spl1301_handle(int pin)
-{
-
-    depthSensor->depth =
-        (depthSensor->pressure - depthSensor->init_pressure) / 93.0f;
-
-    //printf("spl1301 depth: %.2f\n", depthSensor->depth);
-    //printf("init_pressure: %.2f\n", depthSensor->init_pressure);
-    //printf("pressure: %.2f\n", depthSensor->pressure);
-}
-
-/**
  * @brief  深度传感器处理线程
  */
 void *depthSensor_thread(void *arg)
 {
-    // 获取初始压力值
+    uint8_t flag = 0, cnt = 0;
+
+    // 获取初始压力值(岸上大气压值) 如果初始压力值异常(比标准大气压很大或很小)，重新进行初始化
     depthSensor->init_pressure = digitalRead(depthSensor->pin);
+
+    // 如果初始压力值与标准大气压相差 20kPa，重新初始化获取(3次重新初始化)     // 101325-20000 ≈ 80000(大约1800m)
+    while ((abs(depthSensor->init_pressure - STANDARD_ATMOSPHERIC_PRESSURE) > 20000) && (cnt++ < 3))
+    {
+        log_w("depth sensor error, trying init it again...");
+        depthSensor->pin += 2;                                      // 原始的pin_base编号舍去，使用+2
+        depthSensor_detect(depthSensor->pin);                       // 重新初始化
+        depthSensor->init_pressure = digitalRead(depthSensor->pin); // 重新获取初始压力
+        if (cnt == 3)                                               // 如果第3次仍失败，则将初始压力值 = 标准大气压
+            depthSensor->init_pressure = STANDARD_ATMOSPHERIC_PRESSURE;
+    }
     while (1)
     {
-        // TODO 如果压力值 由很大变为较小，判定为由水中拿至在岸上， init_pressure值重新获取，更新
-
+        pthread_mutex_lock(&mutex);
         // 获取压力值 通道0
         depthSensor->pressure = digitalRead(depthSensor->pin);
-        // 获取温度值 通道1
-        depthSensor->temperature = digitalRead(depthSensor->pin + 1);
-        /* 对应深度传感器数据处理函数 */
-        depthSensor->handle(depthSensor->pin);
+        /* 如果压力值与上一次压力值相差 0.2个标准大气压，舍弃该数据 */
+        if (flag && (abs(depthSensor->last_pressure - depthSensor->pressure) > (0.2 * STANDARD_ATMOSPHERIC_PRESSURE)))
+        {
+            log_e("%d", depthSensor->pressure);
+            depthSensor->pressure = depthSensor->last_pressure; // 使用上一次的数据
+        }
+        flag = 1; // 第一次不进行比较上一次的值
 
-        sleep(1);
+        // 获取温度值 通道1
+        depthSensor->temperature = digitalRead(depthSensor->pin + 1) / 100.0f; // 除以100转换为温度值
+
+        // 淡水1000  海水1030   p=ρgh
+        // ((测得水深压力)-(岸上压力 101325))/(1000*9.8)
+        depthSensor->depth =
+            (depthSensor->pressure - depthSensor->init_pressure) / (9.8 * 1000);
+        pthread_mutex_unlock(&mutex);
+
+        printf("temp %.2f, init %d, pressure %d, depth %.2f\n",
+               depthSensor->temperature, depthSensor->init_pressure, depthSensor->pressure, depthSensor->depth);
+
+        depthSensor->last_pressure = depthSensor->pressure;
+        delay(10);
     }
 }
 
-int depthSensor_init(int pin)
+/**
+ * @brief  深度传感器检测及初始化
+ * @param  对应wiringpi DEPTH_SENSOR_PIN_BASE
+ */
+int depthSensor_detect(int pin)
 {
-    static int fd;
+    int fd;
     // 对应pin
     depthSensor->pin = pin;
 
-    /* 依次初始化 spl1301、ms5837，根据内部数据 来判断接入的是哪种传感器 */
-    /* TODO 根据 i2c地址来确定是否接入 */
-    if ((fd = spl1301Setup(pin)) > 0)
-    {
+    /* 依次初始化 spl1301、ms5837，根据获取到的数据来判断接入的是哪种传感器 */
+    if ((fd = spl1301Setup(depthSensor->pin)) > 0)
         depthSensor->name = "spl1301";
-        depthSensor->handle = spl1301_handle;
-        return fd;
-    }
-    else if ((fd = ms5837Setup(pin)) > 0)
-    {
+    else if ((fd = ms5837Setup(depthSensor->pin)) > 0)
         depthSensor->name = "ms5837 ";
-        depthSensor->handle = ms5837_handle;
-        return fd;
-    }
     else
-    {
         depthSensor->name = "null";
-        depthSensor->handle = NULL; // 防止产生野指针
-        return -2;
-    }
+
+    return fd;
 }
 
 int sensor_thread_init(void)
 {
-    static int fd;
-
+    int fd;
     pthread_t adc_tid;
     pthread_t jy901_tid;
     pthread_t depth_tid;
+    static uint8_t cnt = 2;
 
     // ADS1118 ADC 初始化
     fd = ads1118Setup(ADS1118_PIN_BASE);
@@ -177,14 +171,20 @@ int sensor_thread_init(void)
     }
 
     // 深度传感器 初始化
-    fd = depthSensor_init(DEPTH_SENSOR_PIN_BASE);
-    if (fd < 0)
-        ERROR_LOG(fd, "depth sersor");
-    else
+    while (cnt--)
     {
-        log_i("%s init", depthSensor->name);
-        pthread_create(&depth_tid, NULL, depthSensor_thread, NULL);
-        pthread_detach(depth_tid);
+        fd = depthSensor_detect(DEPTH_SENSOR_PIN_BASE);
+        if (fd < 0 && cnt == 1) // 第1次无法检测到，打印警告信息
+            log_w("depth sensor cannot detected, trying init it again...");
+        else if (fd < 0 && cnt == 0) // 第2次无法检测到，打印错误信息
+            ERROR_LOG(fd, "depth sersor");
+        else
+        {
+            log_i("%s init", depthSensor->name);
+            pthread_create(&depth_tid, NULL, depthSensor_thread, NULL);
+            pthread_detach(depth_tid);
+            break; // 初始化成功，则直接跳出
+        }
     }
 
     return 0;
