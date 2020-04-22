@@ -67,8 +67,8 @@ void spl1301_get_raw_temp(int fd);
 // 调用该句转换数据,获取原始压力值并将其转换为32位整数
 void spl1301_get_raw_pressure(int fd);
 // 根据原始值返回校准温度值
-float get_spl1301_temperature(void);
+float get_spl1301_temperature(int fd);
 // 根据原值返回校准压力值
-float get_spl1301_pressure(void);
+float get_spl1301_pressure(int fd);
 
 #endif

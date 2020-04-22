@@ -1,5 +1,5 @@
-/*
- * @Description: MS5837 深度传感器驱动
+/**
+ * @desc: MS5837 深度传感器驱动
  *
  *       Notes: 水深传感器设备驱动
  *   Attention: SCL (黑色)   
@@ -70,7 +70,7 @@ int ms5837_reset(int fd)
   */
 int ms5837_get_calib_param(int fd)
 {
-    static int i;
+    int i;
 
     for (i = 0; i <= 6; i++)
     {
@@ -80,18 +80,16 @@ int ms5837_get_calib_param(int fd)
 
         /* 高8位 与 低8位互换，由于i2c读取先读取 MSB */
         ms5837->c[i] = (ms5837->c[i] << 8) | (ms5837->c[i] >> 8);
-        //printf("param 0x%x\n",ms5837->c[i]);
     }
 
-    /* crc校验为 C[0]的 bit[15,12] */
+    // crc校验为 C[0]的 bit[15,12]
     ms5837->crc = (uint8_t)(ms5837->c[0] >> 12);
-    //printf("param crc:%x\n",ms5837->crc);
 
     // 工厂定义参数为 c[0] 的bit[14,0]
     ms5837->factory_id = (uint8_t)(ms5837->c[0] & 0x0fff);
     /* 
 	 * crc校验为用于判断 ms5837 是否初始化成功 
-	 * 或者说为了检测接入的设备是否是 ms5837传感器
+	 * 即为了检测接入的设备是否是 ms5837传感器
 	*/
     if (ms5837->crc == ms5837_crc4(ms5837->c))
         return 1; // 校验成功，返回1
@@ -108,7 +106,7 @@ int ms5837_get_calib_param(int fd)
  */
 uint32_t ms5837_get_conversion(int fd, uint8_t command)
 {
-    static uint8_t temp[3];
+    uint8_t temp[3];
 
     // 1.先写入转换命令(即指定转换传感器及精度) (datasheet P11)
     wiringPiI2CWrite(fd, command);
@@ -136,17 +134,17 @@ void ms5837_cal_raw_temperature(int fd)
     // 获取原始温度数字量
     ms5837->D2_Temp = ms5837_get_conversion(fd, MS583703BA_D2_OSR_8192);
     // 实际温度与参考温度之差 (公式见datasheet P7)
-    ms5837->dT = (int32_t)ms5837->D2_Temp - ((int32_t)ms5837->c[5] << 8); // *256
+    ms5837->dT = (int32_t)ms5837->D2_Temp - ((int32_t)ms5837->c[5] << 8);
     // 实际的温度
-    ms5837->TEMP = 2000 + ((int64_t)ms5837->dT * (int64_t)ms5837->c[6] >> 23); // 8388608 = 2^23,这里不采用右移23位，因为该数据为有符号
+    ms5837->TEMP = 2000 + (((int64_t)ms5837->dT * (int64_t)ms5837->c[6]) >> 23);
 }
 
 /**
- * @brief  获取并计算压力值 并进行温度补偿
+ * @brief  计算温度补偿后的压力值与二阶修正后温度值
  *   除法采用移位为了提高计算效率
  *   计算中的(int64_t)强制类型转换为了防止计算数据溢出
  */
-void ms5837_cal_pressure(int fd)
+void ms5837_cal_pressure_and_temp(int fd)
 {
     int64_t Ti, OFFi, SENSi;
     int64_t dT_squ; // dT的乘方
@@ -186,13 +184,11 @@ void ms5837_cal_pressure(int fd)
     ms5837->SENS -= SENSi;
 
     // 温度补偿后的压力值
-    ms5837->P = (((ms5837->D1_Pres * ms5837->SENS) >> 21) - ms5837->OFF) >> 13;
-
+    ms5837->P = ((((int64_t)ms5837->D1_Pres * ms5837->SENS) >> 21) - ms5837->OFF) >> 13;
     // 实际温度值
-    ms5837->temperature = (float)(ms5837->TEMP - Ti) / 100;
+    ms5837->temperature = (ms5837->TEMP - Ti) / 100.0f;
     // 实际压力值
-    ms5837->pressure = (float)ms5837->P / 10;
-    printf("pressure: %f  %.2f", ms5837->pressure, ms5837->temperature);
+    ms5837->pressure = ms5837->P / 10.0f;
 }
 
 //------------------------------------------------------------------------------------------------------------------
@@ -212,25 +208,23 @@ static int myDigitalRead(struct wiringPiNodeStruct *node, int pin)
     int channel = pin - node->pinBase;
     int fd = node->fd;
 
-    /* 先获取温度数据，因为需要进行温度补偿 
-	 * 在计算压力函数中，会计算温度二阶，使得温度更加准确
-	 * 因此不管获取压力或者温度，都应调用这以下两个函数
-	*/
-
-    // 因为程序调用时，会先获取压力值，获取完压力值后(经过二阶修正)，温度值才是准确的
+    // 因为程序调用时，应当先获取压力值，获取完压力值后(经过二阶修正)，温度值才是准确的
     // 因此，获取温度时，不再进行数据计算，直接返回温度数据，避免浪费计算资源
     if (TEMPERATURE_SENSOR == channel)
     {
         return (int)(ms5837->temperature * 100); // 扩大100倍，方便int类型传输
     }
-
-    ms5837_cal_raw_temperature(fd);
-    ms5837_cal_pressure(fd);
+    /* 先获取温度数据，因为需要进行温度补偿 
+	 * 在计算压力函数中，会计算温度二阶，使得温度更加准确
+     * 因此调用 ms5837_cal_pressure_and_temp 函数后，温度才是准确值
+	*/
+    ms5837_cal_raw_temperature(fd);   // 计算原始温度数据
+    ms5837_cal_pressure_and_temp(fd); // 计算温度补偿后的压力值与二阶修正后温度值
 
     if (PRESSURE_SENSOR == channel)
     {
-        // 由于MS5837读取到的压力值单位为mbar(1mbar = 100Pa，因此*100)
-        return (int)(ms5837->pressure * 100);
+        // 由于MS5837读取到的压力值单位为mbar (1mbar = 100Pa，因此*100)
+        return (int)(ms5837->pressure * 100); // 转换单位为Pa
     }
 
     log_e("ms5837 channel range in [0, 1]");
@@ -244,7 +238,7 @@ static int myDigitalRead(struct wiringPiNodeStruct *node, int pin)
  */
 int ms5837Setup(const int pinBase)
 {
-    static int fd;
+    int fd;
     struct wiringPiNodeStruct *node = NULL; // 指针初始化为NULL，以免产生段错误
 
     // 小于0代表无法找到该i2c接口，输入命令 sudo npi-config 使能该i2c接口

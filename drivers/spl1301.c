@@ -256,12 +256,11 @@ void spl1301_get_raw_pressure(int fd)
 
 /**
  * @brief  根据原始数据返回校准后的温度值
- * 
- *  调用此函数前需要先调用 spl1301_get_raw_temp,获取原始数据
  */
-float get_spl1301_temperature(void)
+float get_spl1301_temperature(int fd)
 {
     float fTsc;
+    spl1301_get_raw_temp(fd); // 获取原始温度值
 
     fTsc = spl1301->i32rawTemperature / (float)spl1301->i32kT;
     spl1301->temperature = spl1301->calib_param.c0 * 0.5 + spl1301->calib_param.c1 * fTsc;
@@ -271,13 +270,12 @@ float get_spl1301_temperature(void)
 
 /**
  * @brief  根据原始数据返回校准后的气压值
- * 
- *  调用此函数前需要先调用 spl1301_get_raw_pressure,获取原始数据
  */
-float get_spl1301_pressure(void)
+float get_spl1301_pressure(int fd)
 {
     float fTsc, fPsc;
     float qua2, qua3;
+    spl1301_get_raw_pressure(fd); // 获取原始压力值
 
     fTsc = spl1301->i32rawTemperature / (float)spl1301->i32kT;
     fPsc = spl1301->i32rawPressure / (float)spl1301->i32kP;
@@ -306,24 +304,21 @@ static int myDigitalRead(struct wiringPiNodeStruct *node, int pin)
     int channel = pin - node->pinBase;
     int fd = node->fd;
 
-    /* 先获取温度数据，温度补偿 */
-    spl1301_get_raw_temp(fd);
+    /* 先获取温度数据，压力值需要温度补偿 
+     * 因此不管获取压力或者温度，都应先调用 get_spl1301_temperature
+    */
+    get_spl1301_temperature(fd);
 
     if (PRESSURE_SENSOR == channel)
-    {
-        /* 先获取原始数据 */
-        spl1301_get_raw_pressure(fd);
-        // TODO 此处是否需要延时，待测试
-        /* 再根据内部ram定标数据进行转换 */
-        return get_spl1301_pressure(); // 单位为 Pa
-    }
-    else if (TEMPERATURE_SENSOR == channel)
-    {
-        return get_spl1301_temperature() * 100; // 扩大100倍，方便int类型传输
-    }
+        return get_spl1301_pressure(fd); // 单位为 Pa
 
-    log_e("spl1301 channel range in [0, 1]");
-    return -1;
+    else if (TEMPERATURE_SENSOR == channel)
+        return (spl1301->temperature * 100); // 扩大100倍，方便int类型传输
+    else
+    {
+        log_e("spl1301 channel range in [0, 1]");
+        return -1;
+    }
 }
 
 /**
@@ -335,7 +330,7 @@ static int myDigitalRead(struct wiringPiNodeStruct *node, int pin)
  */
 int spl1301Setup(const int pinBase)
 {
-    static int fd;
+    int fd;
     struct wiringPiNodeStruct *node = NULL; // 指针初始化为NULL，以免产生段错误
 
     // 小于0代表无法找到该i2c接口，输入命令 sudo npi-config 使能该i2c接口
