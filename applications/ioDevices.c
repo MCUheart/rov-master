@@ -5,6 +5,7 @@
 #define LOG_TAG "ioDevs"
 
 #include "ioDevices.h"
+#include "../user/datatype.h"
 
 #include <elog.h>
 #include <pthread.h>
@@ -31,14 +32,6 @@ static softPWM_t beep = {
     .pin = BUZZER_PIN,
     .name = "beep",
 };
-
-// 错误状态灯，只亮红灯
-void errorStatus_led(void)
-{
-    IO_OUPUT_LOW(LEDR_PIN);
-    IO_OUPUT_HIGH(LEDG_PIN);
-    IO_OUPUT_HIGH(LEDB_PIN);
-}
 
 /**
  * @brief  模拟PWM IO设备开关状态转换
@@ -71,14 +64,14 @@ void IO_DEVICE_ON(softPWM_t *pwm)
  */
 void sotfPwmSet(softPWM_t *pwm,
                 uint32_t time, // 持续时间
-                uint32_t per,
-                uint8_t duty, // 占空比 (0~100)
+                uint32_t per,  // 周期
+                uint8_t duty,  // 占空比 (0~100)
                 uint8_t flag)
 {
     /* 
-     * div取决于 softPwm_process所在线程休眠的时间 
-     * eg.休眠时间为10ms，则div = 10 (建议休眠时间为10ms，超过设定周期，则无效)
-    */
+	 * div取决于 softPwm_process所在线程休眠的时间 
+	 * eg.休眠时间为10ms，则div = 10 (建议休眠时间为10ms，超过设定周期，则无效)
+	*/
     static uint8_t div = 10;
 
     pwm->time = time / div;  // 持续时间

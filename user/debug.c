@@ -1,5 +1,5 @@
 /**
- * @desc: 调试线程
+ * @desc: 调试线程(匿名地面站ANO服务器)
  */
 #define LOG_TAG "debug"
 
@@ -47,7 +47,8 @@ void *ano_recv_thread(void *arg)
     while (1)
     {
         len = recvfrom(sockfd, buff, sizeof(buff), 0, (struct sockaddr *)&clientAddr, &addrLen);
-        ANO_DT_Data_Receive_Anl(buff, len); //数据解析
+        // 接收匿名地面站数据，进行解析
+        ANO_DT_Data_Receive_Anl(buff, len);
     }
     close(sockfd);
     return NULL;
@@ -60,6 +61,7 @@ void *ano_send_thread(void *arg)
 {
     while (1)
     {
+        // 发送机器状态信息
         ANO_SEND_StateMachine();
         delay(20);
     }

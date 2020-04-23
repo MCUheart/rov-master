@@ -44,4 +44,10 @@ void remote_control_data_analysis(uint8_t *buff, cmd_t *cmd);
 // 计算校验和
 uint8_t calculate_check_sum(uint8_t *buff, uint8_t len);
 
+// 从文件中读取ROV所有参数
+void read_rov_all_params(void);
+// 将ROV所有参数写入文件
+void write_rov_all_params(void);
+// ROV所有设备参数初始化
+void rov_all_params_init(void);
 #endif

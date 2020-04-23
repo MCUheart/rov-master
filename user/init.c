@@ -4,7 +4,7 @@
 #define LOG_TAG "init"
 
 #include "init.h"
-#include "../applications/PID.h"
+
 #include "../applications/data.h"
 #include "../applications/display.h"
 #include "../applications/ioDevices.h"
@@ -12,34 +12,50 @@
 #include "../applications/sensor.h"
 #include "../applications/server.h"
 #include "../applications/system.h"
-#include "../tools/ano_link.h"
+
+#include "datatype.h"
 #include "debug.h"
 
 #include <elog.h>
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>
+
 #include <wiringPi.h>
 
-void rov_params_init(void)
-{
-    /* 判断config参数配置文件是否存在
-	 * 1.存在，  则读取config中的参数，进行初始化
-     * 2.不存在，则创建config文件，将PID参数写入
-     * 
-    */
-    if (0 == access(ROV_CONFIG_FILE_PATH, F_OK)) // 0:exist
-    {
-        read_pid_params();
-        log_i("read rov params");
-    }
-    else
-    {
-        Total_PID_Init();   // 初始化PID参数
-        write_pid_params(); // 将初始化的参数写入文件
-        log_i("create config file & write pid params");
-    }
-}
+// 全局ROV信息
+rovInfo_t rovInfo;
+
+// 全局ROV设备
+rovDev_t rovdev = {
+    .light = {
+        // 探照灯
+        .name = "light    ",
+        .pMax = 20 * 1000, // 单位us
+        .nMax = 0,
+        .speed = 1000,
+        .channel = LIGHT_CHANNEL,
+    },
+
+    .yuntai = {
+        // 云台
+        .name = "yuntai   ",
+        .pMax = 2000,
+        .med = 1500,
+        .nMax = 1000,
+        .speed = 50,
+        .channel = YUNTAI_CHANNEL,
+    },
+
+    .robot_arm = {
+        // 机械臂
+        .name = "robot-arm",
+        .pMax = 2000,
+        .med = 1500,
+        .nMax = 1000,
+        .speed = 50,
+        .channel = ROBOT_ARM_CHANNEL,
+    },
+};
 
 int system_init(void)
 {
@@ -54,15 +70,15 @@ int system_init(void)
     // TODO ROV模式获取 4推 还是 6推
     log_i("Welcome to ROV Master V%s\n", ROV_MASTER_VERSION);
 
-    rov_params_init(); // ROV参数初始化
+    rov_all_params_init(); // ROV参数初始化
 
     control_server_thread_init(); // 上位机服务器线程 初始化
 
     anoUdp_server_thread_init(); // ANO服务器线程 初始化
 
-    //sensor_thread_init(); // 传感器线程 初始化
+    sensor_thread_init(); // 传感器线程 初始化
 
-    //pwmDevs_thread_init(); // PWM设备线程 初始化
+    pwmDevs_thread_init(); // PWM设备线程 初始化
 
     ioDevs_thread_init(); // IO设备线程 初始化
 

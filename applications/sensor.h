@@ -3,12 +3,6 @@
 
 #include "../user/config.h"
 
-#include "../drivers/ads1118.h"
-#include "../drivers/jy901.h"
-#include "../drivers/ms5837.h"
-#include "../drivers/spl1301.h"
-#include "../drivers/sys_status.h"
-
 /* 深度传感器设备描述符 */
 typedef struct
 {
@@ -32,32 +26,7 @@ typedef struct
 
 } powerSource_t;
 
-/* 系统状态 */
-typedef struct
-{
-    net_t net;       // 网卡
-    cpu_t cpu;       // cpu
-    disk_t disk;     // 硬盘
-    memory_t memory; // 内存
-
-} system_status_t;
 /* --------------------------------------------------------------------------------------------------- */
-
-/* ROV状态信息结构体 */
-typedef struct
-{
-
-    uint8_t type;              // 系统状态
-    char name[20];             // 航行器名称
-    jy901_t jy901;             // 九轴
-    powerSource_t powerSource; // 电源
-    depthSensor_t depthSensor; // 深度传感器
-    system_status_t system;    // 系统状态
-
-} rovInfo_t;
-
-// 外部调用变量
-extern rovInfo_t rovInfo;
 
 // 传感器线程初始化
 int sensor_thread_init(void);

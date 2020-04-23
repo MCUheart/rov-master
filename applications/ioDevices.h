@@ -33,7 +33,7 @@ typedef struct
     uint8_t duty;    // 占空比 (0~100)
     uint8_t pin;     // 引脚
     uint8_t flag;    // 模式标志位
-
+    void (*off)(void);
 } softPWM_t;
 
 // IO口设备线程初始化

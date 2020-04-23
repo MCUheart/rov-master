@@ -4,13 +4,130 @@
 
 #define LOG_TAG "data"
 
+#include "../user/datatype.h"
+
+#include "PID.h"
 #include "data.h"
 #include "sensor.h"
 #include "server.h"
 
 #include <elog.h>
 #include <stdio.h>
+#include <unistd.h>
 
+void rov_all_params_init(void)
+{
+    /* 判断config参数配置文件是否存在
+	 * 1.存在，  则读取config中的参数，进行初始化
+	 * 2.不存在，则创建config文件，将PID参数写入
+	 * 
+	*/
+    if (0 == access(ROV_CONFIG_FILE_PATH, F_OK)) // 0:exist
+    {
+        read_rov_all_params();
+        log_i("read rov params success...");
+    }
+    else
+    {
+        Total_PID_Init();       // 初始化PID参数
+        write_rov_all_params(); // 将初始化的参数写入文件
+        log_w("create config file & write pid params success...");
+    }
+}
+
+// 读取PID
+void read_pid_from_file(FILE *fp, char *name, PID_Controler *Controler)
+{
+    fscanf(fp, "%s %f %f %f\n", name, &Controler->Kp, &Controler->Ki, &Controler->Kd);
+}
+// 写入PID
+void write_pid_to_file(FILE *fp, char *name, PID_Controler *Controler)
+{
+    fprintf(fp, "%s %f %f %f\n", name, Controler->Kp, Controler->Ki, Controler->Kd);
+}
+
+// 读取 PWM设备参数
+void read_pwmDev_params_from_file(FILE *fp, char *name, easyPWM_dev_t *dev)
+{
+    // 设备名 反向最大值 正向最大值 速度
+    fscanf(fp, "%s %hu %hu %hu\n", name, &dev->nMax, &dev->pMax, &dev->speed);
+}
+// 写入 PWM设备参数
+void write_pwmDev_params_to_file(FILE *fp, easyPWM_dev_t *dev)
+{
+    fprintf(fp, "%s %hu %hu %hu\n", dev->name, dev->nMax, dev->pMax, dev->speed);
+}
+
+/**
+  * @brief  从文件fp中读取PID参数
+  */
+void read_rov_all_params(void)
+{
+    FILE *fp = NULL;
+    char name[20], buf[50];
+
+    fp = fopen(ROV_CONFIG_FILE_PATH, "r"); // r 文件必须存在，只允许读
+    if (NULL == fp)
+        return;
+
+    fgets(buf, sizeof(buf), fp); // 读取第1行描述信息(相当于跳过这一行)
+
+    read_pid_from_file(fp, name, &Total_Controller.Pitch_Angle_Control);
+    read_pid_from_file(fp, name, &Total_Controller.Pitch_Gyro_Control);
+
+    read_pid_from_file(fp, name, &Total_Controller.Roll_Angle_Control);
+    read_pid_from_file(fp, name, &Total_Controller.Roll_Gyro_Control);
+
+    read_pid_from_file(fp, name, &Total_Controller.Yaw_Angle_Control);
+    read_pid_from_file(fp, name, &Total_Controller.Yaw_Gyro_Control);
+
+    read_pid_from_file(fp, name, &Total_Controller.High_Position_Control);
+    read_pid_from_file(fp, name, &Total_Controller.High_Speed_Control);
+
+    fgets(buf, sizeof(buf), fp); // 读取设备参数描述信息(相当于跳过这一行)
+
+    read_pwmDev_params_from_file(fp, name, &rovdev.light);
+    read_pwmDev_params_from_file(fp, name, &rovdev.yuntai);
+    read_pwmDev_params_from_file(fp, name, &rovdev.robot_arm);
+    // 设备中值计算
+    rovdev.yuntai.med = (rovdev.yuntai.nMax + rovdev.yuntai.pMax) / 2;
+    rovdev.robot_arm.med = (rovdev.robot_arm.nMax + rovdev.robot_arm.pMax) / 2;
+
+    fclose(fp);
+}
+/**
+  * @brief  写入PID参数至文件fp
+  */
+void write_rov_all_params(void)
+{
+    FILE *fp = NULL;
+
+    fp = fopen(ROV_CONFIG_FILE_PATH, "w+"); // w+ 创建一个文字文件读/写
+    if (NULL == fp)
+        return;
+
+    fprintf(fp, "name\t\t\tp\t\ti\t\td\n"); // 写入PID参数信息
+
+    write_pid_to_file(fp, "pitch_angle", &Total_Controller.Pitch_Angle_Control);
+    write_pid_to_file(fp, "pitch_gyro ", &Total_Controller.Pitch_Gyro_Control);
+
+    write_pid_to_file(fp, "roll_angle ", &Total_Controller.Roll_Angle_Control);
+    write_pid_to_file(fp, "roll_gyro  ", &Total_Controller.Roll_Gyro_Control);
+
+    write_pid_to_file(fp, "yaw_angle  ", &Total_Controller.Yaw_Angle_Control);
+    write_pid_to_file(fp, "yaw_gyro   ", &Total_Controller.Yaw_Gyro_Control);
+
+    write_pid_to_file(fp, "high_positi", &Total_Controller.High_Position_Control);
+    write_pid_to_file(fp, "high_speed ", &Total_Controller.High_Speed_Control);
+
+    fprintf(fp, "dev\tpMax\tnMax\tspeed\n"); // 写入 PWM设备参数信息
+
+    write_pwmDev_params_to_file(fp, &rovdev.light);
+    write_pwmDev_params_to_file(fp, &rovdev.yuntai);
+    write_pwmDev_params_to_file(fp, &rovdev.robot_arm);
+
+    fclose(fp);
+}
 /**
   * @brief  获取浮点型数据 头两位小数的100倍
   * @param  float data
@@ -100,8 +217,8 @@ void convert_rov_status_data(uint8_t *buff) // 转换需要返回上位机数据
     buff[3] = (int)rovInfo.powerSource.voltage;         //整数倍
     buff[4] = get_decimal(rovInfo.powerSource.voltage); //小数的100倍
 
-    buff[5] = (int)rovInfo.system.cpu.temperature;         //整数倍
-    buff[6] = get_decimal(rovInfo.system.cpu.temperature); //小数的100倍
+    buff[5] = (int)rovInfo.cpu.temperature;         //整数倍
+    buff[6] = get_decimal(rovInfo.cpu.temperature); //小数的100倍
 
     buff[7] = (int)rovInfo.depthSensor.temperature;         //整数倍
     buff[8] = get_decimal(rovInfo.depthSensor.temperature); //小数的100倍

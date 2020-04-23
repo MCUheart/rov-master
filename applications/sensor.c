@@ -3,9 +3,13 @@
  */
 
 #define LOG_TAG "sensor"
-
 #include "sensor.h"
-#include "ioDevices.h"
+#include "../drivers/ads1118.h"
+#include "../drivers/jy901.h"
+#include "../drivers/ms5837.h"
+#include "../drivers/spl1301.h"
+#include "../user/datatype.h"
+
 #include <elog.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -16,8 +20,6 @@
 
 #define ADS1118_PIN_BASE 500 // wiringpi node编号
 #define DEPTH_SENSOR_PIN_BASE 360
-
-rovInfo_t rovInfo;
 
 static jy901_t *jy901 = &rovInfo.jy901;
 static powerSource_t *powerSource = &rovInfo.powerSource;
@@ -105,14 +107,13 @@ void *depthSensor_thread(void *arg)
         // 获取温度值 通道1
         depthSensor->temperature = digitalRead(depthSensor->pin + 1) / 100.0f; // 除以100转换为温度值
 
-        // 淡水1000  海水1030   p=ρgh
-        // ((测得水深压力)-(岸上压力 101325))/(1000*9.8)
+        // ((测得水深压力)-(岸上压力 101325))/(1000*9.8) 淡水1000  海水1030   p=ρgh
         depthSensor->depth =
             (depthSensor->pressure - depthSensor->init_pressure) / (9.8 * 1000);
         pthread_mutex_unlock(&mutex);
 
-        printf("temp %.2f, init %d, pressure %d, depth %.2f\n",
-               depthSensor->temperature, depthSensor->init_pressure, depthSensor->pressure, depthSensor->depth);
+        /*printf("temp %.2f, init %d, pressure %d, depth %.2f\n",
+               depthSensor->temperature, depthSensor->init_pressure, depthSensor->pressure, depthSensor->depth);*/
 
         depthSensor->last_pressure = depthSensor->pressure;
         delay(10);
@@ -174,6 +175,7 @@ int sensor_thread_init(void)
     while (cnt--)
     {
         fd = depthSensor_detect(DEPTH_SENSOR_PIN_BASE);
+
         if (fd < 0 && cnt == 1) // 第1次无法检测到，打印警告信息
             log_w("depth sensor cannot detected, trying init it again...");
         else if (fd < 0 && cnt == 0) // 第2次无法检测到，打印错误信息
@@ -189,36 +191,3 @@ int sensor_thread_init(void)
 
     return 0;
 }
-/*
-// 打印传感器信息
-void print_sensor_info(void)
-{
-    log_d("      variable      |   value");
-    log_d("--------------------|------------");
-
-    log_d("        Roll        |  %+0.3f", Sensor.JY901.Euler.Roll);
-    log_d("        Pitch       |  %+0.3f", Sensor.JY901.Euler.Pitch);
-    log_d("        Yaw         |  %+0.3f", Sensor.JY901.Euler.Yaw);
-    log_d("--------------------|------------");
-    log_d("        Acc.x       |  %+0.3f", Sensor.JY901.Acc.x);
-    log_d("        Acc.y       |  %+0.3f", Sensor.JY901.Acc.y);
-    log_d("        Acc.z       |  %+0.3f", Sensor.JY901.Acc.z);
-    log_d("--------------------|------------");
-    log_d("       Gyro.x       |  %+0.3f", Sensor.JY901.Gyro.x);
-    log_d("       Gyro.y       |  %+0.3f", Sensor.JY901.Gyro.y);
-    log_d("       Gyro.z       |  %+0.3f", Sensor.JY901.Gyro.z);
-    log_d("  JY901_Temperature |  %+0.3f", Sensor.JY901.Temperature);
-    log_d("--------------------|------------");
-    log_d("       Voltage      |  %0.3f",  Sensor.PowerSource.Voltage); // 电压
-    log_d("       Current      |  %0.3f",  Sensor.PowerSource.Current); // 电流
-    log_d("--------------------|------------");
-    log_d(" Depth Sensor Type  |  %s",     "nop"); // 深度传感器类型
-    log_d(" Water Temperature  |  %0.3f",  Sensor.DepthSensor.Temperature);          // 水温
-    log_d("sensor_Init_Pressure|  %0.3f",  Sensor.DepthSensor.Init_PessureValue);    // 深度传感器初始压力值
-    log_d("   sensor_Pressure  |  %0.3f",  Sensor.DepthSensor.PessureValue);         // 深度传感器当前压力值
-    log_d("        Depth       |  %0.3f",  Sensor.DepthSensor.Depth);                // 深度值
-    log_d("--------------------|------------");
-    log_d("   CPU.Temperature  |  %0.3f",  Sensor.CPU.Temperature); // CPU温度
-    log_d("      CPU.Usages    |  %0.3f",  Sensor.CPU.Usage);       // CPU使用率
-}
-*/

@@ -153,7 +153,7 @@ void *server_thread(void *arg)
 
     while (1)
     {
-        /* 5.接受客户请求，并创建线程处理 */
+        /* 5.接受客户请求，并创建线程处理(可连续接收多个客户端，每个客户端创建2个线程进行处理) */
         if ((client_sock = accept(server_sock, (struct sockaddr *)&clientAddr, &addrLen)) < 0)
         {
             log_e("accept socket error:%s(errorno:%d)", strerror(errno), errno);

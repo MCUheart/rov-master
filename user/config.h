@@ -10,8 +10,14 @@
 #define ROV_MASTER_VERSION "1.0.0"                        // 程序版本
 #define ROV_CONFIG_FILE_PATH "/home/pi/rov-master/params" // 参数文件路径
 
+// 简单 PWM 设备对应 PCA9685 PWM输出通道
+#define LIGHT_CHANNEL 6
+#define YUNTAI_CHANNEL 7
+#define ROBOT_ARM_CHANNEL 8
 /* ------------------------【数据定义】---------------------------------*/
 
+// 标准大气压 101.325kPa
+#define STANDARD_ATMOSPHERIC_PRESSURE 101325
 // 电池 参数
 #define STANDARD_BATTERY_VOLTAGE 3.7f // 锂电池标准电压
 #define FULL_BATTERY_VOLTAGE 4.2f     // 锂电池满电压

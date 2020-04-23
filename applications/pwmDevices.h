@@ -5,11 +5,6 @@
 
 #include "../user/config.h"
 
-// 简单 PWM 设备对应 PWM输出通道
-#define YUNTAI_CHANNEL 6
-#define LIGHT_CHANNEL 7
-#define ROBOT_ARM_CHANNEL 8
-
 #define HERTZ 50             // PWM频率
 #define MAX_PWM 4096         // 满占空比数值
 #define PCA9685_PIN_BASE 300 // PCA9685虚拟引脚
@@ -43,7 +38,7 @@ typedef struct
 /* 简单PWM设备描述符 (云台、机械臂、探照灯) */
 typedef struct
 {
-    char *name;       // 设备 名称
+    const char *name; // 设备 名称
     uint16_t speed;   // 速度值(即单位增减的幅度)
     uint16_t channel; // 对应 输出通道
     uint16_t pMax;    // 正向最大值 positive
@@ -56,4 +51,8 @@ typedef struct
 // PWM设备线程初始化
 int pwmDevs_thread_init(void);
 
+extern propellerPower_t propellerPower;
+extern easyPWM_dev_t light;
+extern easyPWM_dev_t yuntai;
+extern easyPWM_dev_t robot_arm;
 #endif

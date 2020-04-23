@@ -6,6 +6,7 @@
 #define LOG_TAG "pwm"
 
 #include "../drivers/pca9685.h"
+#include "../user/datatype.h"
 
 #include "data.h"
 #include "pwmDevices.h"
@@ -17,39 +18,11 @@
 #include <unistd.h>
 #include <wiringPi.h>
 
-static propellerPower_t propellerPower = {0}; // 推进器推力控制器
-
 static propellerParam_t propellerParam = {
     .pMax = 1750,  // 正向最大值 单位us
     .med = 1500,   // 中值
     .nMax = 1250,  // 反向最大值
     .deadband = 1, // 死区值
-};
-
-static easyPWM_dev_t light = {
-    // 探照灯
-    .pMax = 20 * 1000, // 单位us
-    .nMax = 0,
-    .speed = 1000,
-    .channel = YUNTAI_CHANNEL,
-};
-
-static easyPWM_dev_t yuntai = {
-    // 云台
-    .pMax = 2000,
-    .med = 1500,
-    .nMax = 1000,
-    .speed = 50,
-    .channel = LIGHT_CHANNEL,
-};
-
-static easyPWM_dev_t robot_arm = {
-    // 机械臂
-    .pMax = 2000,
-    .med = 1500,
-    .nMax = 1000,
-    .speed = 50,
-    .channel = ROBOT_ARM_CHANNEL,
 };
 
 /**
@@ -103,13 +76,13 @@ void propeller_init(void) //这边都需要经过限幅在给定  原先为2000-
     int i;
     // 给定最高转速信号
     for (i = 0; i < 6; i++)
-        pwmWrite(PCA9685_PIN_BASE + i, PROPELLER_POWER_P_MAX);
+        pwmWrite(PCA9685_PIN_BASE + i, calcTicks(PROPELLER_POWER_P_MAX));
 
     sleep(2); // 2s
 
     // 给定停转信号
     for (i = 0; i < 6; i++)
-        pwmWrite(PCA9685_PIN_BASE + i, PROPELLER_POWER_STOP);
+        pwmWrite(PCA9685_PIN_BASE + i, calcTicks(PROPELLER_POWER_STOP));
 
     sleep(1); // 1s
 }
@@ -173,26 +146,27 @@ void easyPWM_devices_handle(easyPWM_dev_t *easyPWM, uint8_t *action)
 /*******************************************************************************************************************/
 
 // TODO 收到 server 数据后，再唤醒pwm线程，pwm线程合并
-void *propeller_thread(void *arg)
+void *pwmDevs_thread(void *arg)
 {
-    uint8_t action;
 
     propeller_init();
     while (1)
     {
         sleep(1);
-        propellerPwm_update(&propellerPower);
+        pwmWrite(PCA9685_PIN_BASE + 16, calcTicks(2000));
+        /*
+        propellerPwm_update(&rovdev.propellerPower);
 
-        easyPWM_devices_handle(&yuntai, &action);
-        easyPWM_devices_handle(&light, &action);
-        easyPWM_devices_handle(&robot_arm, &action);
+        easyPWM_devices_handle(&rovdev.yuntai, &action);
+        easyPWM_devices_handle(&rovdev.light, &action);
+        easyPWM_devices_handle(&rovdev.robot_arm, &action);*/
     }
 }
 
 int pwmDevs_thread_init(void)
 {
     int fd;
-    pthread_t propeller_tid;
+    pthread_t pwm_tid;
 
     fd = pca9685Setup(PCA9685_PIN_BASE, HERTZ);
     // 判断对应 i2c接口、pca9685器件 是否存在，不存在直接返回，不创建对应线程
@@ -204,8 +178,8 @@ int pwmDevs_thread_init(void)
     }
 
     log_i("pca9685 init");
-    pthread_create(&propeller_tid, NULL, &propeller_thread, NULL);
-    pthread_detach(propeller_tid);
+    pthread_create(&pwm_tid, NULL, &pwmDevs_thread, NULL);
+    pthread_detach(pwm_tid);
 
     return 0;
 }

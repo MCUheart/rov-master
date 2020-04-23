@@ -75,7 +75,4 @@ void Total_PID_Init(void);
 float PID_Control(PID_Controler *Controler); //海拔高度位置控制器
 float PID_Control_Yaw(PID_Controler *Controler);
 
-void read_pid_params(void);
-void write_pid_params(void);
-
 #endif

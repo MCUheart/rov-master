@@ -7,7 +7,6 @@
 #include "PID.h"
 #include <elog.h>
 #include <math.h>
-#include <stdio.h>
 
 AllControler Total_Controller; //总控制器PID
 
@@ -34,71 +33,6 @@ const float Control_Unit[18][20] = {
     {0, 1, 0, 0, 0, 0, 0, 400, 0, 0, 500, 5.0, 0.300, 0.1, 0, 0, 5000, 1, 1, 1}, //High_Speed;海拔攀升速度   7
     {0, 1, 0, 0, 0, 0, 0, 200, 0, 0, 100, 0.5, 0.000, 0, 0x0, 0, 300, 1, 1, 1},  //High_Position;海拔高度位置 8
 };
-
-// 读取PID
-void read_pid_from_file(FILE *fp, char *name, PID_Controler *Controler)
-{
-    fscanf(fp, "%s %f %f %f\n", name, &Controler->Kp, &Controler->Ki, &Controler->Kd);
-}
-// 写入PID
-void write_pid_to_file(FILE *fp, char *name, PID_Controler *Controler)
-{
-    fprintf(fp, "%s %f %f %f\n", name, Controler->Kp, Controler->Ki, Controler->Kd);
-}
-
-/**
-  * @brief  从文件fp中读取PID参数
-  */
-void read_pid_params(void)
-{
-    FILE *fp = NULL;
-    char name[20], buf[50];
-
-    fp = fopen(ROV_CONFIG_FILE_PATH, "r"); // r 文件必须存在，只允许读
-    if (NULL == fp)
-        return;
-
-    fgets(buf, sizeof(buf), fp); // 读取第1行描述信息(相当于跳过第1行)
-
-    read_pid_from_file(fp, name, &Total_Controller.Pitch_Angle_Control);
-    read_pid_from_file(fp, name, &Total_Controller.Pitch_Gyro_Control);
-
-    read_pid_from_file(fp, name, &Total_Controller.Roll_Angle_Control);
-    read_pid_from_file(fp, name, &Total_Controller.Roll_Gyro_Control);
-
-    read_pid_from_file(fp, name, &Total_Controller.Yaw_Angle_Control);
-    read_pid_from_file(fp, name, &Total_Controller.Yaw_Gyro_Control);
-
-    read_pid_from_file(fp, name, &Total_Controller.High_Position_Control);
-    read_pid_from_file(fp, name, &Total_Controller.High_Speed_Control);
-    fclose(fp);
-}
-/**
-  * @brief  写入PID参数至文件fp
-  */
-void write_pid_params(void)
-{
-    FILE *fp = NULL;
-
-    fp = fopen(ROV_CONFIG_FILE_PATH, "w+"); // w+ 创建一个文字文件读/写
-    if (NULL == fp)
-        return;
-
-    fprintf(fp, "name\t\t\tp\t\ti\t\td\n"); // 写入PID描述信息
-
-    write_pid_to_file(fp, "pitch_angle", &Total_Controller.Pitch_Angle_Control);
-    write_pid_to_file(fp, "pitch_gyro ", &Total_Controller.Pitch_Gyro_Control);
-
-    write_pid_to_file(fp, "roll_angle ", &Total_Controller.Roll_Angle_Control);
-    write_pid_to_file(fp, "roll_gyro  ", &Total_Controller.Roll_Gyro_Control);
-
-    write_pid_to_file(fp, "yaw_angle  ", &Total_Controller.Yaw_Angle_Control);
-    write_pid_to_file(fp, "yaw_gyro   ", &Total_Controller.Yaw_Gyro_Control);
-
-    write_pid_to_file(fp, "high_positi", &Total_Controller.High_Position_Control);
-    write_pid_to_file(fp, "high_speed ", &Total_Controller.High_Speed_Control);
-    fclose(fp);
-}
 
 /**
   * @brief  PID_Init(PID参数初始化函数)
