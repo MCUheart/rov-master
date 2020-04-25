@@ -14,7 +14,6 @@ typedef struct
     float deg;     // 合力角度值
     float rad;     // 合力弧度角
     float percent; // 动力百分比
-    float depth;   // 摇杆的期望深度
 
 } rockerInfo_t; /* 摇杆信息 */
 

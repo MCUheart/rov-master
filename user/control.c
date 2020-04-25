@@ -8,6 +8,7 @@
 #include "../applications/pwmDevices.h"
 
 #include "control.h"
+#include "datatype.h"
 
 #include <elog.h>
 #include <math.h>
@@ -27,7 +28,6 @@ void fourAixs_get_rocker_params(rockerInfo_t *rc, cmd_t *cmd) // 获取摇杆参
     /* 垂直方向 */
     if (abs(rc->fz) < 10) // Z轴摇杆值较小时不进行计算，防止过度累加
         rc->fz = 0;
-    rc->depth += ((float)rc->fz / 50); // 期望深度 累加
 
     /* 水平方向 */
     rc->force = sqrt(rc->fx * rc->fx + rc->fy * rc->fy); // 求取合力斜边大小
@@ -75,18 +75,26 @@ void fourAixs_horizontal_control(rockerInfo_t *rc, propellerPower_t *propeller)
  * @brief  深度控制
  * @param  rocker_t 摇杆结构体
  */
-void rov_depth_control(float expect_depth, float current_depth, propellerPower_t *propeller)
+void rov_depth_control(rockerInfo_t *rc, propellerPower_t *propeller)
 {
-    float vertical_force; // 垂直方向上的推力输出大小
+    static float expect_depth;
+    static float vertical_force; // 垂直方向上的推力输出大小
 
-    Total_Controller.High_Position_Control.Expect = expect_depth;    // 期望深度(由遥控器给定) rc->depth
-    Total_Controller.High_Position_Control.FeedBack = current_depth; // 深度反馈(由传感器获取) sensor->depth
+    if (rc->fz < 10) // 当摇杆不动时，PID进行定深
+    {
+        Total_Controller.High_Position_Control.Expect = expect_depth;                // 期望深度(为上次摇杆调节到的深度)
+        Total_Controller.High_Position_Control.FeedBack = rovInfo.depthSensor.depth; // 深度反馈(为传感器当前深度)
+        vertical_force = PID_Control(&Total_Controller.High_Position_Control);       // 获取 高度位置PID控制器 输出的控制量
 
-    vertical_force = PID_Control(&Total_Controller.High_Position_Control); // 获取 高度位置PID控制器 输出的控制量
-
-    // TODO 推进器偏差值  推进器方向
-    propeller->leftMiddle = vertical_force;   // 正反桨
-    propeller->rightMiddle = -vertical_force; // 输出为负值
+        propeller->leftMiddle = vertical_force;   // 正反桨
+        propeller->rightMiddle = -vertical_force; // 输出为负值
+    }
+    else // 当摇杆动时
+    {
+        expect_depth = rovInfo.depthSensor.depth; // 期望深度为当前深度
+        propeller->leftMiddle = rc->fz * 2;       // 正反桨
+        propeller->rightMiddle = -rc->fz * 2;     // 输出为负值
+    }
 }
 
 void sixAixs_get_rocker_params(rockerInfo_t *rc, cmd_t *cmd) // 获取摇杆参数值
@@ -100,7 +108,6 @@ void sixAixs_get_rocker_params(rockerInfo_t *rc, cmd_t *cmd) // 获取摇杆参�
     /* 垂直方向 */
     if (abs(rc->fz) < 10) // Z轴摇杆值较小时不进行计算，防止过度累加
         rc->fz = 0;
-    rc->depth += ((float)rc->fz / 50); // 期望深度 累加
 
     /* 水平方向 */
     rc->force = sqrt(rc->fx * rc->fx + rc->fy * rc->fy); // 求取合力斜边大小
