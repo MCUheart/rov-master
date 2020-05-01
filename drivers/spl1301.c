@@ -14,8 +14,7 @@
 #include <wiringPi.h>
 #include <wiringPiI2C.h>
 
-static spl1301_t spl1301_dev;
-static spl1301_t *spl1301 = &spl1301_dev;
+static spl1301_t spl1301;
 
 /**
  * @brief  获取 SPL1301 厂家ID与版本ID
@@ -30,10 +29,10 @@ int spl1301_get_id(int fd)
     if (reg < 0)
         return -1;
 
-    spl1301->revision_id = reg & 0x0F;
-    spl1301->product_id = (reg & 0xF0) >> 4;
+    spl1301.revision_id = reg & 0x0F;
+    spl1301.product_id = (reg & 0xF0) >> 4;
 
-    return spl1301->product_id;
+    return spl1301.product_id;
 }
 
 /**
@@ -112,7 +111,7 @@ void spl1301_rateset(int fd, uint8_t iSensor, uint8_t u8SmplRate, uint8_t u8Over
 
     if (iSensor == PRESSURE_SENSOR)
     {
-        spl1301->i32kP = i32kPkT;
+        spl1301.i32kP = i32kPkT;
         wiringPiI2CWriteReg8(fd, 0x06, reg);
         if (u8OverSmpl > 8)
         {
@@ -127,7 +126,7 @@ void spl1301_rateset(int fd, uint8_t iSensor, uint8_t u8SmplRate, uint8_t u8Over
     }
     if (iSensor == TEMPERATURE_SENSOR)
     {
-        spl1301->i32kT = i32kPkT;
+        spl1301.i32kT = i32kPkT;
         wiringPiI2CWriteReg8(fd, 0x07, reg | 0x80); //Using mems temperature
         if (u8OverSmpl > 8)
         {
@@ -153,37 +152,37 @@ void spl1301_get_calib_param(int fd)
 
     h = wiringPiI2CReadReg8(fd, 0x10);
     l = wiringPiI2CReadReg8(fd, 0x11);
-    spl1301->calib_param.c0 = (int16_t)h << 4 | l >> 4;
-    spl1301->calib_param.c0 = (spl1301->calib_param.c0 & 0x0800) ? (0xF000 | spl1301->calib_param.c0) : spl1301->calib_param.c0;
+    spl1301.calib_param.c0 = (int16_t)h << 4 | l >> 4;
+    spl1301.calib_param.c0 = (spl1301.calib_param.c0 & 0x0800) ? (0xF000 | spl1301.calib_param.c0) : spl1301.calib_param.c0;
     h = wiringPiI2CReadReg8(fd, 0x11);
     l = wiringPiI2CReadReg8(fd, 0x12);
-    spl1301->calib_param.c1 = (int16_t)(h & 0x0F) << 8 | l;
-    spl1301->calib_param.c1 = (spl1301->calib_param.c1 & 0x0800) ? (0xF000 | spl1301->calib_param.c1) : spl1301->calib_param.c1;
+    spl1301.calib_param.c1 = (int16_t)(h & 0x0F) << 8 | l;
+    spl1301.calib_param.c1 = (spl1301.calib_param.c1 & 0x0800) ? (0xF000 | spl1301.calib_param.c1) : spl1301.calib_param.c1;
     h = wiringPiI2CReadReg8(fd, 0x13);
     m = wiringPiI2CReadReg8(fd, 0x14);
     l = wiringPiI2CReadReg8(fd, 0x15);
-    spl1301->calib_param.c00 = (int32_t)h << 12 | (int32_t)m << 4 | (int32_t)l >> 4;
-    spl1301->calib_param.c00 = (spl1301->calib_param.c00 & 0x080000) ? (0xFFF00000 | spl1301->calib_param.c00) : spl1301->calib_param.c00;
+    spl1301.calib_param.c00 = (int32_t)h << 12 | (int32_t)m << 4 | (int32_t)l >> 4;
+    spl1301.calib_param.c00 = (spl1301.calib_param.c00 & 0x080000) ? (0xFFF00000 | spl1301.calib_param.c00) : spl1301.calib_param.c00;
     h = wiringPiI2CReadReg8(fd, 0x15);
     m = wiringPiI2CReadReg8(fd, 0x16);
     l = wiringPiI2CReadReg8(fd, 0x17);
-    spl1301->calib_param.c10 = (int32_t)(h & 0x0F) << 16 | (int32_t)m << 8 | l;
-    spl1301->calib_param.c10 = (spl1301->calib_param.c10 & 0x080000) ? (0xFFF00000 | spl1301->calib_param.c10) : spl1301->calib_param.c10;
+    spl1301.calib_param.c10 = (int32_t)(h & 0x0F) << 16 | (int32_t)m << 8 | l;
+    spl1301.calib_param.c10 = (spl1301.calib_param.c10 & 0x080000) ? (0xFFF00000 | spl1301.calib_param.c10) : spl1301.calib_param.c10;
     h = wiringPiI2CReadReg8(fd, 0x18);
     l = wiringPiI2CReadReg8(fd, 0x19);
-    spl1301->calib_param.c01 = (int16_t)h << 8 | l;
+    spl1301.calib_param.c01 = (int16_t)h << 8 | l;
     h = wiringPiI2CReadReg8(fd, 0x1A);
     l = wiringPiI2CReadReg8(fd, 0x1B);
-    spl1301->calib_param.c11 = (int16_t)h << 8 | l;
+    spl1301.calib_param.c11 = (int16_t)h << 8 | l;
     h = wiringPiI2CReadReg8(fd, 0x1C);
     l = wiringPiI2CReadReg8(fd, 0x1D);
-    spl1301->calib_param.c20 = (int16_t)h << 8 | l;
+    spl1301.calib_param.c20 = (int16_t)h << 8 | l;
     h = wiringPiI2CReadReg8(fd, 0x1E);
     l = wiringPiI2CReadReg8(fd, 0x1F);
-    spl1301->calib_param.c21 = (int16_t)h << 8 | l;
+    spl1301.calib_param.c21 = (int16_t)h << 8 | l;
     h = wiringPiI2CReadReg8(fd, 0x20);
     l = wiringPiI2CReadReg8(fd, 0x21);
-    spl1301->calib_param.c30 = (int16_t)h << 8 | l;
+    spl1301.calib_param.c30 = (int16_t)h << 8 | l;
 }
 
 /**
@@ -234,8 +233,8 @@ void spl1301_get_raw_temp(int fd)
     m = wiringPiI2CReadReg8(fd, 0x04);
     l = wiringPiI2CReadReg8(fd, 0x05);
 
-    spl1301->i32rawTemperature = (int32_t)h << 16 | (int32_t)m << 8 | (int32_t)l;
-    spl1301->i32rawTemperature = (spl1301->i32rawTemperature & 0x800000) ? (0xFF000000 | spl1301->i32rawTemperature) : spl1301->i32rawTemperature;
+    spl1301.i32rawTemperature = (int32_t)h << 16 | (int32_t)m << 8 | (int32_t)l;
+    spl1301.i32rawTemperature = (spl1301.i32rawTemperature & 0x800000) ? (0xFF000000 | spl1301.i32rawTemperature) : spl1301.i32rawTemperature;
 }
 
 /**
@@ -250,8 +249,8 @@ void spl1301_get_raw_pressure(int fd)
     m = wiringPiI2CReadReg8(fd, 0x01);
     l = wiringPiI2CReadReg8(fd, 0x02);
 
-    spl1301->i32rawPressure = (int32_t)h << 16 | (int32_t)m << 8 | (int32_t)l;
-    spl1301->i32rawPressure = (spl1301->i32rawPressure & 0x800000) ? (0xFF000000 | spl1301->i32rawPressure) : spl1301->i32rawPressure;
+    spl1301.i32rawPressure = (int32_t)h << 16 | (int32_t)m << 8 | (int32_t)l;
+    spl1301.i32rawPressure = (spl1301.i32rawPressure & 0x800000) ? (0xFF000000 | spl1301.i32rawPressure) : spl1301.i32rawPressure;
 }
 
 /**
@@ -262,10 +261,10 @@ float get_spl1301_temperature(int fd)
     float fTsc;
     spl1301_get_raw_temp(fd); // 获取原始温度值
 
-    fTsc = spl1301->i32rawTemperature / (float)spl1301->i32kT;
-    spl1301->temperature = spl1301->calib_param.c0 * 0.5 + spl1301->calib_param.c1 * fTsc;
+    fTsc = spl1301.i32rawTemperature / (float)spl1301.i32kT;
+    spl1301.temperature = spl1301.calib_param.c0 * 0.5 + spl1301.calib_param.c1 * fTsc;
 
-    return spl1301->temperature;
+    return spl1301.temperature;
 }
 
 /**
@@ -277,14 +276,14 @@ float get_spl1301_pressure(int fd)
     float qua2, qua3;
     spl1301_get_raw_pressure(fd); // 获取原始压力值
 
-    fTsc = spl1301->i32rawTemperature / (float)spl1301->i32kT;
-    fPsc = spl1301->i32rawPressure / (float)spl1301->i32kP;
-    qua2 = spl1301->calib_param.c10 + fPsc * (spl1301->calib_param.c20 + fPsc * spl1301->calib_param.c30);
-    qua3 = fTsc * fPsc * (spl1301->calib_param.c11 + fPsc * spl1301->calib_param.c21);
+    fTsc = spl1301.i32rawTemperature / (float)spl1301.i32kT;
+    fPsc = spl1301.i32rawPressure / (float)spl1301.i32kP;
+    qua2 = spl1301.calib_param.c10 + fPsc * (spl1301.calib_param.c20 + fPsc * spl1301.calib_param.c30);
+    qua3 = fTsc * fPsc * (spl1301.calib_param.c11 + fPsc * spl1301.calib_param.c21);
 
-    spl1301->pressure = spl1301->calib_param.c00 + fPsc * qua2 + fTsc * spl1301->calib_param.c01 + qua3;
+    spl1301.pressure = spl1301.calib_param.c00 + fPsc * qua2 + fTsc * spl1301.calib_param.c01 + qua3;
 
-    return spl1301->pressure;
+    return spl1301.pressure;
 }
 
 //------------------------------------------------------------------------------------------------------------------
@@ -313,7 +312,7 @@ static int myDigitalRead(struct wiringPiNodeStruct *node, int pin)
         return get_spl1301_pressure(fd); // 单位为 Pa
 
     else if (TEMPERATURE_SENSOR == channel)
-        return (spl1301->temperature * 100); // 扩大100倍，方便int类型传输
+        return (spl1301.temperature * 100); // 扩大100倍，方便int类型传输
     else
     {
         log_e("spl1301 channel range in [0, 1]");

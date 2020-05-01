@@ -18,8 +18,7 @@
 #include <wiringPi.h>
 #include <wiringPiI2C.h>
 
-static ms5837_t ms5837_dev;
-static ms5837_t *ms5837 = &ms5837_dev;
+static ms5837_t ms5837;
 
 /**
   * @brief  MS5837 PROM校准参数，crc4校验函数 (datasheet P12)
@@ -75,23 +74,23 @@ int ms5837_get_calib_param(int fd)
     for (i = 0; i <= 6; i++)
     {
         // 读取prom中的出厂标定参数
-        ms5837->c[i] =
+        ms5837.c[i] =
             wiringPiI2CReadReg16(fd, MS583703BA_PROM_RD + (i * 2));
 
         /* 高8位 与 低8位互换，由于i2c读取先读取 MSB */
-        ms5837->c[i] = (ms5837->c[i] << 8) | (ms5837->c[i] >> 8);
+        ms5837.c[i] = (ms5837.c[i] << 8) | (ms5837.c[i] >> 8);
     }
 
     // crc校验为 C[0]的 bit[15,12]
-    ms5837->crc = (uint8_t)(ms5837->c[0] >> 12);
+    ms5837.crc = (uint8_t)(ms5837.c[0] >> 12);
 
     // 工厂定义参数为 c[0] 的bit[14,0]
-    ms5837->factory_id = (uint8_t)(ms5837->c[0] & 0x0fff);
+    ms5837.factory_id = (uint8_t)(ms5837.c[0] & 0x0fff);
     /* 
 	 * crc校验为用于判断 ms5837 是否初始化成功 
 	 * 即为了检测接入的设备是否是 ms5837传感器
 	*/
-    if (ms5837->crc == ms5837_crc4(ms5837->c))
+    if (ms5837.crc == ms5837_crc4(ms5837.c))
         return 1; // 校验成功，返回1
 
     return -1;
@@ -132,11 +131,11 @@ uint32_t ms5837_get_conversion(int fd, uint8_t command)
 void ms5837_cal_raw_temperature(int fd)
 {
     // 获取原始温度数字量
-    ms5837->D2_Temp = ms5837_get_conversion(fd, MS583703BA_D2_OSR_8192);
+    ms5837.D2_Temp = ms5837_get_conversion(fd, MS583703BA_D2_OSR_8192);
     // 实际温度与参考温度之差 (公式见datasheet P7)
-    ms5837->dT = (int32_t)ms5837->D2_Temp - ((int32_t)ms5837->c[5] << 8);
+    ms5837.dT = (int32_t)ms5837.D2_Temp - ((int32_t)ms5837.c[5] << 8);
     // 实际的温度
-    ms5837->TEMP = 2000 + (((int64_t)ms5837->dT * (int64_t)ms5837->c[6]) >> 23);
+    ms5837.TEMP = 2000 + (((int64_t)ms5837.dT * (int64_t)ms5837.c[6]) >> 23);
 }
 
 /**
@@ -151,25 +150,25 @@ void ms5837_cal_pressure_and_temp(int fd)
     uint32_t temp_minus_squ, temp_plus_squ;
 
     // 获取原始压力数字量
-    ms5837->D1_Pres = ms5837_get_conversion(fd, MS583703BA_D1_OSR_8192);
+    ms5837.D1_Pres = ms5837_get_conversion(fd, MS583703BA_D1_OSR_8192);
     // 实际温度偏移
-    ms5837->OFF = ((int64_t)ms5837->c[2] << 16) + (((int64_t)(ms5837->c[4] * ms5837->dT)) >> 7);
+    ms5837.OFF = ((int64_t)ms5837.c[2] << 16) + (((int64_t)(ms5837.c[4] * ms5837.dT)) >> 7);
     // 实际温度灵敏度
-    ms5837->SENS = ((int64_t)ms5837->c[1] << 15) + (((int64_t)(ms5837->c[3] * ms5837->dT)) >> 8);
+    ms5837.SENS = ((int64_t)ms5837.c[1] << 15) + (((int64_t)(ms5837.c[3] * ms5837.dT)) >> 8);
 
-    dT_squ = ((int64_t)ms5837->dT * (int64_t)ms5837->dT);           // dT的2次方
-    temp_minus_squ = (2000 - ms5837->TEMP) * (2000 - ms5837->TEMP); // 温度差的2次方
+    dT_squ = ((int64_t)ms5837.dT * (int64_t)ms5837.dT);           // dT的2次方
+    temp_minus_squ = (2000 - ms5837.TEMP) * (2000 - ms5837.TEMP); // 温度差的2次方
 
     /* 对温度和压力进行二阶修正 (datasheet P8) */
-    if (ms5837->TEMP < 2000) // 低温情况:低于20℃时
+    if (ms5837.TEMP < 2000) // 低温情况:低于20℃时
     {
         Ti = (3 * dT_squ) >> 33;
         OFFi = 3 * temp_minus_squ / 2;
         SENSi = 5 * temp_minus_squ / 8;
 
-        if (ms5837->TEMP < -1500) // 超低温情况:低于-15℃时
+        if (ms5837.TEMP < -1500) // 超低温情况:低于-15℃时
         {
-            temp_plus_squ = (ms5837->TEMP + 1500) * (ms5837->TEMP + 1500); // 温度和的2次方
+            temp_plus_squ = (ms5837.TEMP + 1500) * (ms5837.TEMP + 1500); // 温度和的2次方
             OFFi += 7 * temp_plus_squ;
             SENSi += 4 * temp_plus_squ;
         }
@@ -180,15 +179,15 @@ void ms5837_cal_pressure_and_temp(int fd)
         OFFi = temp_minus_squ >> 4;
         SENSi = 0;
     }
-    ms5837->OFF -= OFFi;
-    ms5837->SENS -= SENSi;
+    ms5837.OFF -= OFFi;
+    ms5837.SENS -= SENSi;
 
     // 温度补偿后的压力值
-    ms5837->P = ((((int64_t)ms5837->D1_Pres * ms5837->SENS) >> 21) - ms5837->OFF) >> 13;
+    ms5837.P = ((((int64_t)ms5837.D1_Pres * ms5837.SENS) >> 21) - ms5837.OFF) >> 13;
     // 实际温度值
-    ms5837->temperature = (ms5837->TEMP - Ti) / 100.0f;
+    ms5837.temperature = (ms5837.TEMP - Ti) / 100.0f;
     // 实际压力值
-    ms5837->pressure = ms5837->P / 10.0f;
+    ms5837.pressure = ms5837.P / 10.0f;
 }
 
 //------------------------------------------------------------------------------------------------------------------
@@ -212,7 +211,7 @@ static int myDigitalRead(struct wiringPiNodeStruct *node, int pin)
     // 因此，获取温度时，不再进行数据计算，直接返回温度数据，避免浪费计算资源
     if (TEMPERATURE_SENSOR == channel)
     {
-        return (int)(ms5837->temperature * 100); // 扩大100倍，方便int类型传输
+        return (int)(ms5837.temperature * 100); // 扩大100倍，方便int类型传输
     }
     /* 先获取温度数据，因为需要进行温度补偿 
 	 * 在计算压力函数中，会计算温度二阶，使得温度更加准确
@@ -224,7 +223,7 @@ static int myDigitalRead(struct wiringPiNodeStruct *node, int pin)
     if (PRESSURE_SENSOR == channel)
     {
         // 由于MS5837读取到的压力值单位为mbar (1mbar = 100Pa，因此*100)
-        return (int)(ms5837->pressure * 100); // 转换单位为Pa
+        return (int)(ms5837.pressure * 100); // 转换单位为Pa
     }
 
     log_e("ms5837 channel range in [0, 1]");
@@ -252,7 +251,7 @@ int ms5837Setup(const int pinBase)
     */
     if (ms5837_reset(fd) < 0)
         return -2;
-
+    delay(50);
     /* 获取校准参数，若获取的数据CRC校验失败，则判定 接入的不是MS5837，或未接入MS5837 */
     if (ms5837_get_calib_param(fd) < 0)
         return -3;
