@@ -97,6 +97,23 @@ void rov_depth_control(rockerInfo_t *rc, propellerPower_t *propeller)
     }
 }
 
+/**
+ * @brief  航向角控制
+ * @param  rocker_t 摇杆结构体
+ */
+void rov_yaw_control(rockerInfo_t *rc, propellerPower_t *propeller)
+{
+    static float expect_yaw;
+    static float force; // 推力输出大小
+
+    Total_Controller.High_Position_Control.Expect = expect_yaw;          // 期望航向角
+    Total_Controller.High_Position_Control.FeedBack = rovInfo.jy901.yaw; // 当前航向角
+    force = PID_Control(&Total_Controller.Yaw_Angle_Control);            // 获取 角度PID控制器 输出的控制量
+
+    propeller->leftDown = force;   // 正反桨
+    propeller->rightDown = -force; // 输出为负值
+}
+
 void sixAixs_get_rocker_params(rockerInfo_t *rc, cmd_t *cmd) // 获取摇杆参数值
 {
     // 摇杆值居中为 127，范围为 0~255，因此需要转换为 -127 ~ +127
