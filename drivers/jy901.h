@@ -4,8 +4,9 @@
 
 #include "../user/config.h"
 
-#define JY901_UART_DEV "/dev/ttyS2" // JY901 使用的 UART 设备
-#define JY901_UART_BAUD 9600        // JY901 UART 波特率
+#define JY901_UART_DEV "/dev/ttyS2"   // JY901 使用的 UART 设备
+#define UART_BAUD_9600 9600     // JY901 UART 波特率
+
 
 #define JY901_PACKET_LENGTH 11 // JY901 数据包长度
 
@@ -188,6 +189,8 @@ typedef struct
     Vector3f speed; //速度
     Vector3s mag;   //磁场
 
+    float pressure; // 气压
+    float altitude; // 海拔
     /* 欧拉角 */
     float roll;        //x
     float pitch;       //y

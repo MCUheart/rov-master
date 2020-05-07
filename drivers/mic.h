@@ -3,4 +3,6 @@
 
 #include "../user/config.h"
 
+void record_init(void);
+
 #endif

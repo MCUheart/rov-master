@@ -16,8 +16,16 @@
 #include <wiringPi.h>
 #include <wiringSerial.h>
 
+static uint8_t jy901_reset_cmd[5] = {0xFF, 0xAA, 0x00, 0x01, 0x00}; // 0x00-设置保存  0x01-恢复出厂设置并保存
+
 // JY901 原始数据
 static jy901_raw_t jy901_raw;
+
+// 恢复出厂设置并保存
+void jy901Reset(int fd)
+{
+    write(fd, jy901_reset_cmd, 5);
+}
 
 /**
   *  @brief  JY901数据转换
@@ -60,6 +68,13 @@ static void jy901_convert(uint8_t which, jy901_t *jy901)
         //printf("mag %d %d %d\n", jy901->mag.x, jy901->mag.y, jy901->mag.z);
     }
     break;
+    case 0x56: // 气压值
+    {
+        jy901->pressure = jy901_raw.stcPress.lPressure;
+        jy901->altitude = jy901_raw.stcPress.lAltitude;
+        //printf("mag %d %d %d\n", jy901->mag.x, jy901->mag.y, jy901->mag.z);
+    }
+    break;
     default:
         break;
     }
@@ -71,13 +86,12 @@ static void jy901_convert(uint8_t which, jy901_t *jy901)
   */
 void copeJY901_data(uint8_t data, jy901_t *jy901)
 {
+    static uint8_t i;
     static uint8_t rxBuffer[20] = {0}; // 数据包
     static uint8_t rxCheck = 0;        // 尾校验字
     static uint8_t rxCount = 0;        // 接收计数
-    static uint8_t i = 0;              // 接收计数
 
     rxBuffer[rxCount++] = data; // 将收到的数据存入缓冲区中
-
     if (rxBuffer[0] != 0x55)
     {
         // 数据头不对，则重新开始寻找0x55数据头
@@ -139,11 +153,12 @@ void copeJY901_data(uint8_t data, jy901_t *jy901)
   */
 int jy901Setup(void)
 {
-    static int fd;
+    int fd;
     // 小于0代表无法找到该uart接口，输入命令 sudo npi-config 使能该uart接口
-    fd = serialOpen(JY901_UART_DEV, JY901_UART_BAUD);
+    fd = serialOpen(JY901_UART_DEV, UART_BAUD_9600);
     if (fd < 0)
         return -1;
 
+    // jy901Reset(fd); // 恢复出厂设置
     return fd;
 }

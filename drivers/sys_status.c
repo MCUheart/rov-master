@@ -1,5 +1,5 @@
-/*
- * @Description: system status 系统状态获取方法
+/**
+ * @desc: system status 系统状态获取方法
  *
  * CPU状态(占用率、温度)
  * 内存状态(占用率、总大小等)

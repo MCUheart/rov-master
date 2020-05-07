@@ -50,7 +50,7 @@ void pca9685PWMSetFreq(int fd, float freq)
 	* prescale = round(osc_clock / (4096 * frequency)) - 1 , osc_clock = 25 MHz
 	* round 为四舍五入,可以通过 +0.5 来实现
 	*/
-    int prescale = (int)(PCA9685_OSC_CLK / (4096 * freq) - 0.5f);
+    int prescale = (int)(PCA9685_OSC_CLK / (4096 * freq) + 0.5f) / 0.965; // 0.965校准
 
     // Get settings and calc bytes for the different states.
     int settings = wiringPiI2CReadReg8(fd, PCA9685_MODE1) & 0x7F; // Set restart bit to 0
@@ -86,7 +86,7 @@ void pca9685PWMWrite(int fd, int pin, int on, int off)
 
     // 可写入位 12bit，最大值为 4095    on + off = 4095
     wiringPiI2CWriteReg16(fd, reg, on & 0x0FFF);
-    wiringPiI2CWriteReg16(fd, reg + 2, off & 0x0FFF);
+    wiringPiI2CWriteReg16(fd, reg + 2, (off & 0x0FFF));
 }
 
 /**
