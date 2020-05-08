@@ -93,9 +93,11 @@ int system_status_thread_init(void)
     pthread_t mem_disk_tid;
     pthread_t record_tid;
 
+    // CPU状态线程
     pthread_create(&cpu_tid, NULL, cpu_status_thread, NULL);
     pthread_detach(cpu_tid);
 
+    // 获取网速 线程
     pthread_create(&net_tid, NULL, net_speed_thread, NULL);
     pthread_detach(net_tid);
 

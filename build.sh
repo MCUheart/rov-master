@@ -2,6 +2,11 @@
 #这个脚本的作用是自动安装相关的软件、安装相关的库
 #需要root权限来运行这个脚本
 
+echo "=======================使编译脚本可执行====================="
+chmod +x compile.sh
+
+echo "=======================使推流脚本可执行====================="
+chmod +x ./tools/video.sh
 
 echo "=====================安装WiringNP=========================="
 cd ./lib/WiringNP/
@@ -21,13 +26,6 @@ make
 sudo cp libeasylogger.so ..
 sudo cp libeasylogger.so /usr/lib/
 
-cd ../..
-
-echo "=======================使编译脚本可执行====================="
-chmod +x compile.sh
-
-echo "=======================使推流脚本可执行====================="
-chmod +x video.sh
 
 
 exit 0

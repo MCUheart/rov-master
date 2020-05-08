@@ -7,6 +7,8 @@
  */
 
 #include "ano_link.h"
+#include "filter.h"
+
 #include "../applications/PID.h"
 #include "../applications/data.h"
 #include "../applications/pwmDevices.h"
@@ -679,6 +681,8 @@ void ANO_Data_Send_User_Data(int32_t data1, int32_t data2, int32_t data3, int32_
 * 函 数 名：ANO_SEND_StateMachine
 * 功    能：依次发送各组数据
 ********************************************/
+
+float temp, kalman_temp;
 void ANO_SEND_StateMachine(void)
 {
     static uint8_t cnt;
@@ -716,7 +720,11 @@ void ANO_SEND_StateMachine(void)
         }
         break;
     case 8:
-        ANO_Data_Send_User_Data(rovInfo.depthSensor.pressure, 0, 0, 0);
+
+        temp = rovInfo.depthSensor.pressure;
+        kalman_temp = rovInfo.depthSensor.pressure;
+        kalman_filter(&kalman_temp);
+        ANO_Data_Send_User_Data(rovInfo.depthSensor.pressure, kalman_temp, 0, 0);
         break;
     }
 

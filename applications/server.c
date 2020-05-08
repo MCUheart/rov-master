@@ -1,5 +1,5 @@
-/*
- * @Description: 数据链路服务器，用于传输与接收数据
+/**
+ * @desc:  数据链路服务器，用于传输与接收数据
  */
 
 #define LOG_TAG "server"

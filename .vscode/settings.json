@@ -16,7 +16,12 @@
         "devicethread.h": "c",
         "iodevices.h": "c",
         "stdio.h": "c",
-        "ano_link.h": "c"
+        "ano_link.h": "c",
+        "wiringpi.h": "c",
+        "elog.h": "c",
+        "ms5837.h": "c",
+        "sys_status.h": "c",
+        "debug.h": "c"
     },
     "python.jediEnabled": false,
     "C_Cpp.errorSquiggles": "Disabled"
