@@ -5,17 +5,17 @@
 # 1开启摄像头1 
 # 2开启摄像头2 
 # 3两者都开启
-CAMERA_ON=0
+CAMERA_ON=1
 
 ############# 摄像头视频推流参数 #############
 CAMERA1_DEV="/dev/video0"                  #
 CAMERA1_FPS=30                             #
-CAMERA1_PORT=8088                          #
+CAMERA1_PORT=8085                          #
 CAMERA1_RESO=1280x720                      #
                                            #
 CAMERA2_DEV="/dev/video2"                  #
 CAMERA2_FPS=30                             #
-CAMERA2_PORT=8089                          #
+CAMERA2_PORT=8086                          #
 CAMERA2_RESO=1280x720                      #
 ############################################
 

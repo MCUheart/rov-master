@@ -23,13 +23,13 @@ static void signal_handler(int sig)
 }
 
 // TODO 是否需要使用fork函数
-/*
+
 void *mjpg_streamer_thread(void *arg)
 {
-	system("./tools/video.sh &"); // 打开视频推流脚本
-	return NULL;
+    system("./tools/video.sh &"); // 打开视频推流脚本
+    return NULL;
 }
-*/
+
 void pirnf_menu(void)
 {
     printf("1. set arm");
@@ -123,7 +123,7 @@ for (cmdtp = &__u_boot_cmd_start;
 
 int main(int argc, char **argv)
 {
-    //pthread_t mjpg_tid;
+    pthread_t mjpg_tid;
     char buf[50];
 
     system_init();
@@ -132,8 +132,8 @@ int main(int argc, char **argv)
     if (signal(SIGINT, signal_handler) == SIG_ERR)
         log_e("could not register signal handler\n");
 
-    //pthread_create(&mjpg_tid, NULL, mjpg_streamer_thread, NULL);
-    //pthread_detach(mjpg_tid);
+    pthread_create(&mjpg_tid, NULL, mjpg_streamer_thread, NULL);
+    pthread_detach(mjpg_tid);
 
     while (1) // 此处while循环是为了本程序不退出
     {
