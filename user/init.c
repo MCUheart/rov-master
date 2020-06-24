@@ -39,7 +39,7 @@ rovDev_t rovdev = {
     .yuntai = {
         // 云台
         .name = "yuntai   ",
-        .pMax = 2000,
+        .pMax = 5000,
         .med = 1500,
         .nMax = 1000,
         .speed = 50,
@@ -49,9 +49,10 @@ rovDev_t rovdev = {
     .robot_arm = {
         // 机械臂
         .name = "robot-arm",
-        .pMax = 2000,
+        .cur = 1500,
+        .pMax = 1550, // 参数来自ROVMaker机械手
         .med = 1500,
-        .nMax = 1000,
+        .nMax = 1450,
         .speed = 50,
         .channel = ROBOT_ARM_CHANNEL,
     },
@@ -67,6 +68,7 @@ int system_init(void)
         log_e("Unable to start wiringPi: %s", strerror(errno));
         return -1;
     }
+
     // TODO ROV模式获取 4推 还是 6推
     log_i("Welcome to ROV Master V%s\n", ROV_MASTER_VERSION);
 

@@ -50,4 +50,7 @@ void read_rov_all_params(void);
 void write_rov_all_params(void);
 // ROV所有设备参数初始化
 void rov_all_params_init(void);
+
+/* 上位机的控制数据 */
+extern cmd_t cmd_data;
 #endif

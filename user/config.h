@@ -10,10 +10,10 @@
 #define ROV_MASTER_VERSION "1.0.0"                        // 程序版本
 #define ROV_CONFIG_FILE_PATH "/home/pi/rov-master/params" // 参数文件路径
 
-// 简单 PWM 设备对应 PCA9685 PWM输出通道
-#define LIGHT_CHANNEL 6
-#define YUNTAI_CHANNEL 7
-#define ROBOT_ARM_CHANNEL 8
+// 简单 PWM 设备对应 PCA9685 PWM输出通道(接线板PWM口定义)
+#define LIGHT_CHANNEL 10
+#define YUNTAI_CHANNEL 8
+#define ROBOT_ARM_CHANNEL 12
 /* ------------------------【数据定义】---------------------------------*/
 
 // 标准大气压 101.325kPa

@@ -51,8 +51,4 @@ typedef struct
 // PWM设备线程初始化
 int pwmDevs_thread_init(void);
 
-extern propellerPower_t propellerPower;
-extern easyPWM_dev_t light;
-extern easyPWM_dev_t yuntai;
-extern easyPWM_dev_t robot_arm;
 #endif

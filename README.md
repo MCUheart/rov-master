@@ -1,8 +1,8 @@
 
 
 <div align="center">
-  <a href="https://github.com/zengwangfa/rov-master"><img src="https://zengwangfa.oss-cn-shanghai.aliyuncs.com/rov/rovmaster1.jpg" alt=""></a>
-  <a href="https://github.com/zengwangfa/rov-master"><h1>Rov-Master</h1></a>
+  <a href="https://github.com/zengwangfa/rov-master"><img src="https://zengwangfa.oss-cn-shanghai.aliyuncs.com/rov/rovmaster(vector)1.png" alt=""></a>
+  <a href="https://github.com/zengwangfa/rov-master"><h1>ROV-Master</h2></a>
 </div>
 
 

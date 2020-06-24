@@ -24,8 +24,6 @@
 
 #include <wiringPi.h>
 
-/* 上位机的控制数据 */
-static cmd_t cmd_data;
 /* 接收数据包 */
 static uint8_t recv_buff[RECV_DATA_LEN] = {0};
 /* 返回数据包，包头位固定为：0xAA,0x55;  数据长度位：0x16 */
@@ -88,7 +86,7 @@ void *recv_thread(void *arg)
             }
             return NULL;
         }
-        //print_hex_data("recv", recv_buff, RECV_DATA_LEN);
+        print_hex_data("recv", recv_buff, RECV_DATA_LEN);
         /* 接收遥控数据解析 */
         remote_control_data_analysis(recv_buff, &cmd_data);
     }

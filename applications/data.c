@@ -15,6 +15,9 @@
 #include <stdio.h>
 #include <unistd.h>
 
+/* 上位机的控制数据 */
+cmd_t cmd_data;
+
 void rov_all_params_init(void)
 {
     /* 判断config参数配置文件是否存在
@@ -208,7 +211,6 @@ void convert_rov_status_data(uint8_t *buff) // 转换需要返回上位机数据
     uint16_t troll; //暂存数据
     uint16_t tpitch;
     uint16_t tyaw;
-    static uint8_t speed_test;
 
     troll = (short)((rovInfo.jy901.roll + 180) * 100); // 数据转换:将角度数据转为正值并放大100倍
     tpitch = (short)((rovInfo.jy901.pitch + 180) * 100);
@@ -236,8 +238,8 @@ void convert_rov_status_data(uint8_t *buff) // 转换需要返回上位机数据
     buff[16] = troll >> 8;     // Roll 高8位
     buff[17] = (uint8_t)troll; //低8位
 
-    buff[18] = (uint8_t)speed_test++; //x轴航速
-    buff[19] = 0;                     //设备提示字符
+    buff[18] = 0; //x轴航速
+    buff[19] = 0; //设备提示字符
 
     buff[20] = 0x01; // cmd->All_Lock;
 

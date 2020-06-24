@@ -1,5 +1,5 @@
-/*
- * @Description: 简单PWM设备线程(推进器、云台、机械臂) 
+/**
+ * @desc: 简单PWM设备线程(推进器、云台、机械臂) 
  *               推进器初始化，推进器PWM线程
  */
 
@@ -40,6 +40,10 @@ int calcTicks(int16_t duty)
     return (int)(impulseMs / cycleMs * MAX_PWM + 0.5f);
 }
 
+/**
+ * @brief  6推进器值输出限幅
+ * @param  6推进器PWM值数组
+ */
 void propellerPwm_output_limit(int16_t *val)
 {
     int i;
@@ -53,6 +57,10 @@ void propellerPwm_output_limit(int16_t *val)
     }
 }
 
+/**
+ * @brief  简单PWM设备限幅(推进器、云台、机械臂) 
+ * @param  easyPWM 设备句柄
+ */
 void easyPwm_output_limit(easyPWM_dev_t *easyPWM)
 {
     if (easyPWM->cur > easyPWM->pMax) // 正向限幅
@@ -118,13 +126,14 @@ void propellerPwm_update(propellerPower_t *propeller)
  */
 void easyPWM_devices_handle(easyPWM_dev_t *easyPWM, uint8_t *action)
 {
+
     switch (*action)
     {
     case 0x01:
-        easyPWM->cur -= easyPWM->speed; // 正向
+        easyPWM->cur += easyPWM->speed; // 正向
         break;
     case 0x02:
-        easyPWM->cur += easyPWM->speed; // 反向
+        easyPWM->cur -= easyPWM->speed; // 反向
         break;
     case 0x03:
         easyPWM->cur = easyPWM->med; // 归中
@@ -135,7 +144,6 @@ void easyPWM_devices_handle(easyPWM_dev_t *easyPWM, uint8_t *action)
     *action = 0x00; // 清除控制字
 
     easyPwm_output_limit(easyPWM); // 限幅
-
     pwmWrite(PCA9685_PIN_BASE + easyPWM->channel, calcTicks(easyPWM->cur));
 }
 
@@ -152,14 +160,25 @@ void *pwmDevs_thread(void *arg)
     propeller_init();
     while (1)
     {
-        sleep(1);
-        pwmWrite(PCA9685_PIN_BASE + 16, calcTicks(2000));
-        /*
-        propellerPwm_update(&rovdev.propellerPower);
+        //sleep(1);
+        //pwmWrite(PCA9685_PIN_BASE + 16, calcTicks(2000));
 
-        easyPWM_devices_handle(&rovdev.yuntai, &action);
-        easyPWM_devices_handle(&rovdev.light, &action);
-        easyPWM_devices_handle(&rovdev.robot_arm, &action);*/
+        //propellerPwm_update(&rovdev.propellerPower);
+
+        //easyPWM_devices_handle(&rovdev.yuntai, &action);
+        //easyPWM_devices_handle(&rovdev.light, &action);
+    }
+}
+
+// TODO 数据服务器接收到数据才进行停转
+void *robotArm_thread(void *arg)
+{
+    while (1)
+    {
+
+        easyPWM_devices_handle(&rovdev.robot_arm, &cmd_data.arm);
+        delay(100);
+        rovdev.robot_arm.cur = rovdev.robot_arm.med; // 停转
     }
 }
 
@@ -167,6 +186,7 @@ int pwmDevs_thread_init(void)
 {
     int fd;
     pthread_t pwm_tid;
+    pthread_t arm_tid; // 机械臂线程(由于ROVMaker机械手只有两种状态，因此单独设置一个线程进行控制)
 
     fd = pca9685Setup(PCA9685_PIN_BASE, HERTZ);
     // 判断对应 i2c接口、pca9685器件 是否存在，不存在直接返回，不创建对应线程
@@ -181,5 +201,7 @@ int pwmDevs_thread_init(void)
     pthread_create(&pwm_tid, NULL, &pwmDevs_thread, NULL);
     pthread_detach(pwm_tid);
 
+    pthread_create(&arm_tid, NULL, &robotArm_thread, NULL);
+    pthread_detach(arm_tid);
     return 0;
 }
